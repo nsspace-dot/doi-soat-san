@@ -262,7 +262,7 @@
 
   P.inferLoai = function (lydo) {
     var f = fn(lydo);
-    return /TU CHOI NHAN|KHONG THE LIEN LAC|KHONG LIEN LAC DUOC/.test(f) ? 'Giao không thành công' : 'Trả hàng';
+    return /TU CHOI NHAN|KHONG THE LIEN LAC|KHONG LIEN LAC DUOC|KHONG LIEN HE DUOC/.test(f) ? 'Giao không thành công' : 'Trả hàng';
   };
   P.normLoai = function (raw) {
     var f = fn(raw);
@@ -285,8 +285,15 @@
 
   // o: {defaultSan, gians (đang bật, được phép), kho_list, today, manual: {tên gốc: tên gian}}
   P.parseOldSheet = function (aoa, o) {
-    var h = P.detectHeader(aoa, ['mã vận đơn']);
-    if (h.headerRow < 0) return { error: 'Không thấy dòng tiêu đề có cột "Mã vận đơn"' };
+    // Dòng tiêu đề: dòng đầu tiên (trong 20 dòng) có ô "Mã vận đơn"; các dòng tổng kết phía trên bị bỏ.
+    var h = { headerRow: -1, hMap: {} }, ncol = 0;
+    for (var hr = 0; hr < Math.min(20, aoa.length) && h.headerRow < 0; hr++) {
+      if ((aoa[hr] || []).some(function (x) { return fn(x).indexOf('MA VAN DON') >= 0; })) {
+        h.headerRow = hr;
+        aoa[hr].forEach(function (x, ci) { var v = String(x == null ? '' : x).trim(); if (v && !(v in h.hMap)) h.hMap[v] = ci; if (v) ncol = ci + 1; });
+      }
+    }
+    if (h.headerRow < 0) return { error: 'Không thấy dòng tiêu đề có ô "Mã vận đơn" trong 20 dòng đầu' };
     var f = function (k, ex) { return P.findCol(h.hMap, k, ex); };
     var c = {
       tuan: f(['tuần đối soát', 'ngày đối soát', 'tuần', '=ngày']), ma: f(['mã vận đơn']), gian: f(['gian hàng', '=gian']),
@@ -294,18 +301,33 @@
       phan_loai: f(['phân loại']), tg: f(['thời gian trả']), tt: f(['trạng thái'], ['kho']), kho: f(['=kho', 'kho'], ['trạng thái']),
       ghi_chu: f(['ghi chú']), mdh: f(['mã đơn hàng']), dvvc: f(['đơn vị vận chuyển', 'đvvc'])
     };
-    var out = { rows: [], noMa: 0, dup: 0, unmatched: {}, inferred: 0, odd: 0, badKho: 0, noKho: 0, hasLoai: c.loai !== undefined, errors: 0 };
+    var out = { rows: [], noMa: 0, dup: 0, unmatched: {}, inferred: 0, odd: 0, badKho: 0, noKho: 0, hasLoai: c.loai !== undefined, errors: 0, joined: [] };
     var seen = {}, lastTuan = '', manual = o.manual || {};
+    var blank = function (a) { return !(a || []).some(function (x) { return String(x == null ? '' : x).trim(); }); };
     for (var i = h.headerRow + 1; i < aoa.length; i++) {
-      var r = (aoa[i] || []).map(function (x) { return String(x == null ? '' : x).trim(); });
+      if (blank(aoa[i])) continue;
+      var raw = (aoa[i] || []).slice(), start = i;
+      // Ô có xuống dòng bị mất ngoặc kép: nối với dòng sau cho đủ số cột.
+      while (raw.length < ncol && i + 1 < aoa.length) {
+        var nx = aoa[++i] || [];
+        raw = raw.slice(0, -1).concat([String(raw[raw.length - 1] == null ? '' : raw[raw.length - 1]) + ' ' + String(nx[0] == null ? '' : nx[0])], nx.slice(1));
+      }
+      while (raw.length > ncol && String(raw[raw.length - 1] || '').trim() === '') raw.pop();
+      if (i > start) out.joined.push((start + 1) + '–' + (i + 1));
+      if (raw.length !== ncol) {
+        out.errors++;
+        out.rows.push({ line: start + 1, ma: P.normalizeMa(raw[c.ma]), gianRaw: '', trang_thai: 'Mới', loai_tep: '',
+          error: 'Dòng ' + (start + 1) + (i > start ? '–' + (i + 1) : '') + ': số cột (' + raw.length + ') không khớp tiêu đề (' + ncol + ')' });
+        continue;
+      }
+      var r = raw.map(function (x) { return String(x == null ? '' : x).trim(); });
       var g = function (k) { return c[k] === undefined ? '' : (r[c[k]] || ''); };
-      if (!r.some(Boolean)) continue;
       if (g('tuan')) lastTuan = g('tuan');
       var ma = P.normalizeMa(g('ma'));
       if (!ma || !P.isLikelyRealTrackingId(g('ma'))) { out.noMa++; continue; }
       if (seen[ma]) { out.dup++; continue; }
       seen[ma] = 1;
-      var row = { line: i + 1, ma: ma, gianRaw: g('gian'), ly_do_tra: g('lydo').slice(0, 300), ten_sp: g('ten_sp'), phan_loai: g('phan_loai'),
+      var row = { line: start + 1, ma: ma, gianRaw: g('gian'), ly_do_tra: g('lydo').slice(0, 300), ten_sp: g('ten_sp'), phan_loai: g('phan_loai'),
         ma_don_hang: g('mdh'), dvvc: g('dvvc'), thoi_gian_tra: g('tg'), ghi_chu: g('ghi_chu') };
       var w = P.normalizeOldWeek(lastTuan, o.today);
       row.tuan = w ? w.tuan : ''; row.tuan_raw = lastTuan;

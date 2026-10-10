@@ -495,6 +495,7 @@
     if (r.odd) warns.push(r.odd + ' dòng có trạng thái lạ → đặt "Mới" và ghi vào Ghi chú "Sheet cũ: ...".');
     if (r.badKho) warns.push(r.badKho + ' dòng có KHO không nhận ra → để trống.');
     if (r.noKho) warns.push(r.noKho + ' dòng (ngoài nhóm Newtea) chưa có KHO.');
+    if (r.joined.length) warns.push('Đã nối ' + r.joined.length + ' dòng bị ngắt (ô có xuống dòng mất ngoặc kép), kiểm tra dòng: ' + r.joined.join(', ') + '.');
     if (r.dup) warns.push(r.dup + ' dòng trùng mã trong dữ liệu dán → bỏ.');
     var um = Object.keys(r.unmatched);
     $('impInfo').innerHTML = '<p><b>' + r.rows.length + ' dòng có mã: ' + ok + ' hợp lệ, ' + r.errors + ' lỗi; bỏ qua ' + r.noMa + ' dòng không có mã vận đơn.</b></p>' +

@@ -43,4 +43,15 @@ const [a, b] = o.rows;
 assert.deepStrictEqual([a.gian, a.loai_tep, a.trang_thai, a.phan_loai, a.kho, a.tuan], ['TikTok NewteaVN', 'Giao không thành công', 'Đã tìm thấy', 'Đỏ', 'VL', '31/08 - 06/09']);
 assert.deepStrictEqual([b.gian, b.ly_do_tra, b.tuan, b.loai_tep, o.noMa, o.inferred], ['Shopee Newshop CN1', 'Hỏng\tvỡ', '31/08 - 06/09', 'Trả hàng', 1, 2]);
 assert.strictEqual(P.resolveGian('TIKTOK NewteaVN', 'Shopee', GI).san, 'TikTok');
+
+// Sheet cũ có khối tổng kết, ô ngắt dòng mất ngoặc kép
+const tsv2 = 'BẢNG ĐỐI SOÁT HÀNG TRẢ\t\t\t\t\t\t\t\nTỔNG ĐƠN TRẢ\t3\t\t\t\t\t\t\nĐÃ NHẬN KHO\t1\t\t\t\t\t\t\nCHỜ KIỂM TRA\t2\t\t\t\t\t\t\n\n' +
+  'Ngày đối soát\tMã vận đơn\tGian hàng\tLý do trả\tTên sản phẩm\tPhân loại\tThời gian trả trên hệ thống\tTrạng thái\n' +
+  'Ngày 7.9 - 13.9\tGIA0001\tTIKTOK NewteaVN\tHàng lỗi\tTrà A\t"Size M\nvị đào"\t08/09\tĐã nhận kho\n' +
+  '\tGIA0002\tNS CN1\tSai mẫu,\ngiao nhầm màu\tLịch B\tXanh\t09/09\tChờ kiểm tra\n' +
+  '\tGIA0003\tNewshop\tKhông liên hệ được người nhận\tSách C\tĐỏ\t10/09\t\n';
+const o2 = P.parseOldSheet(P.parseTsv(tsv2), { defaultSan: 'Shopee', gians: GI, kho_list: ['NVS', 'TSN', 'VL'], today: '2026-10-10' });
+assert.deepStrictEqual([o2.errors, o2.rows.length, o2.rows.map(x => x.ma).join(), o2.joined.length], [0, 3, 'GIA0001,GIA0002,GIA0003', 1]);
+assert.deepStrictEqual([o2.rows[0].phan_loai, o2.rows[1].ly_do_tra, o2.rows[1].ten_sp, o2.rows[1].gian], ['Size M\nvị đào', 'Sai mẫu, giao nhầm màu', 'Lịch B', 'Shopee Newshop CN1']);
+assert.deepStrictEqual(o2.rows.map(x => x.loai_tep), ['Trả hàng', 'Trả hàng', 'Giao không thành công']);
 console.log('OK: parse test qua');
