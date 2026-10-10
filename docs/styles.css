@@ -71,6 +71,25 @@ td.ma{font-family:var(--mono);white-space:nowrap}
 td.sp{max-width:280px}td input.note{width:190px}td input.tg{width:140px}td input.wk{width:140px}
 tr.closed td{color:var(--muted);font-style:italic}
 tbody tr.rowerr td{background:#f3d3cc}
+.mono{font-family:var(--mono)}
+table.full td{white-space:nowrap}table.full .spname{min-width:220px;max-width:340px}
+table.compact{table-layout:fixed;width:100%;min-width:0}
+table.compact th{white-space:normal;padding:6px 8px;line-height:1.25}
+table.compact td{padding:6px 8px;white-space:normal;overflow-wrap:anywhere;word-break:break-word}
+table.compact td > div + div{margin-top:3px}
+table.compact select,table.compact input.note,table.compact input.tg,table.compact input.wk{width:100%;min-width:0}
+table.compact input.wk{max-width:15ch;padding:4px 5px}
+table.compact textarea.auto{width:100%;resize:none;overflow:hidden;font-family:var(--serif);line-height:1.35;padding:4px 6px;display:block}
+table.compact select.s-moi,table.compact select.s-chuave,table.compact select.s-chuatim,table.compact select.s-datim,table.compact select.s-khieunai,table.compact select.s-mat{text-transform:none;font-size:13px;padding:3px 2px}
+table.compact .wkbox{display:flex;width:100%}
+.mabig{font-family:var(--mono);font-size:15px;font-weight:700}
+.sub{font-size:12px;color:var(--muted);line-height:1.35}
+.spname{white-space:normal;overflow-wrap:anywhere}
+.nhom{display:inline-block;font-size:12px;color:var(--moss);border:1px solid var(--moss);border-radius:2px;padding:0 4px;line-height:1.4}
+.loai{display:inline-block;font-size:12px;color:var(--ink);background:var(--stripe);border:1px solid var(--line-soft);border-radius:2px;padding:0 5px}
+.gian{font-size:14px}
+.statnote{margin:-6px 0 12px;font-size:13px;font-style:italic;color:var(--muted)}
+.statnote button{font-size:13px;padding:2px 8px;margin-left:6px}
 
 .badge,select.s-moi,select.s-chuave,select.s-chuatim,select.s-datim,select.s-khieunai,select.s-mat,select.k-tsn,select.k-nvs,select.k-vl{border:2px solid currentColor;border-radius:3px;font-weight:700;text-transform:uppercase;font-size:12px;letter-spacing:.02em}
 .badge{display:inline-block;padding:1px 7px;white-space:nowrap;transform:rotate(-1deg)}

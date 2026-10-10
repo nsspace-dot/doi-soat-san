@@ -6,7 +6,7 @@
   var ST_CLS = { 'Mới': 's-moi', 'Chưa về kho': 's-chuave', 'Chưa tìm thấy': 's-chuatim', 'Đã tìm thấy': 's-datim', 'Đã khiếu nại': 's-khieunai', 'Xác nhận mất': 's-mat' };
   var KHO_CLS = { TSN: 'k-tsn', NVS: 'k-nvs', VL: 'k-vl' };
   var PAGE = 50, CHUNK = 20000, CONFIRM_CLOSE = 'Chi tiết đơn sẽ bị xóa sau 14 ngày. Tiếp tục?';
-  var S = { data: null, token: '', user: null, page: 1, sel: {}, rowErr: {}, loadedAt: 0, kho: null, san: [], impManual: {}, impOverride: {} };
+  var S = { data: null, token: '', user: null, page: 1, sel: {}, rowErr: {}, loadedAt: 0, kho: null, san: [], impManual: {}, impOverride: {}, view: 'compact' };
 
   var $ = function (id) { return document.getElementById(id); };
   function esc(v) {
@@ -120,36 +120,63 @@
   function isClosed(c) { return ST_CLOSED.indexOf(c.trang_thai) >= 0; }
   function days(c) { return P.daysOpen(c.created_at, isClosed(c) ? c.closed_at : '', new Date()); }
 
-  function filtered() {
-    var f = { san: $('fSan').value, gian: $('fGian').value, kho: $('fKho').value, tuan: $('fTuan').value, tt: $('fTt').value, owner: $('fOwner').value, closed: $('fClosed').checked };
-    var own = owners(), nm = {};
+  function filterState() {
+    return { san: $('fSan').value, gian: $('fGian').value, kho: $('fKho').value, tuan: $('fTuan').value, tt: $('fTt').value,
+      owner: $('fOwner').value, closed: $('fClosed').checked, codes: P.splitCodes($('fMa').value) };
+  }
+  // Bộ lọc chung (không gồm Trạng thái / Hiện đơn đóng) — dùng cho cả bảng và 4 ô thống kê.
+  function baseMatcher(f) {
+    var own = owners(), nm = {}, set = {};
     S.data.config.gians.forEach(function (g) { nm[g.ten] = g.nhom; });
-    var codes = P.splitCodes($('fMa').value), set = {};
-    codes.forEach(function (c) { set[c] = 1; });
-    return S.data.cases.filter(function (c) {
-      if (!f.closed && isClosed(c) && f.tt !== c.trang_thai) return false;
+    f.codes.forEach(function (c) { set[c] = 1; });
+    return function (c) {
       if (f.san && nm[c.gian] !== f.san) return false;
       if (f.gian && c.gian !== f.gian) return false;
       if (f.kho && (f.kho === '-' ? c.kho : c.kho !== f.kho)) return false;
       if (f.tuan && c.tuan_key !== f.tuan) return false;
-      if (f.tt && c.trang_thai !== f.tt) return false;
       if (f.owner && own[c.gian] !== f.owner) return false;
-      if (codes.length === 1 && String(c.ma).indexOf(codes[0]) < 0) return false;
-      if (codes.length > 1 && !set[c.ma]) return false;
+      if (f.codes.length === 1 && String(c.ma).indexOf(f.codes[0]) < 0) return false;
+      if (f.codes.length > 1 && !set[c.ma]) return false;
       return true;
+    };
+  }
+  function filtered() {
+    var f = filterState(), base = baseMatcher(f);
+    return S.data.cases.filter(function (c) {
+      if (!f.closed && isClosed(c) && f.tt !== c.trang_thai) return false;
+      if (f.tt && c.trang_thai !== f.tt) return false;
+      return base(c);
     }).sort(function (a, b) { return String(b.tuan_key || '').localeCompare(String(a.tuan_key || '')) || String(a.created_at).localeCompare(String(b.created_at)); });
+  }
+  function clearFilters() {
+    ['fSan', 'fGian', 'fKho', 'fTuan', 'fTt', 'fOwner', 'fMa'].forEach(function (id) { $(id).value = ''; });
+    S.page = 1; fillFilters(); render();
   }
 
   var COLS = ['Tuần', 'Sàn', 'Gian', 'Mã vận đơn', 'Loại tệp', 'Lý do trả', 'Tên sản phẩm', 'Phân loại', 'Mã đơn hàng', 'ĐVVC', 'KHO',
     'Thời gian trả trên hệ thống', 'Trạng thái', 'Ghi chú', 'Phụ trách', 'Số ngày tồn'];
+  var COLS_C = [['Tuần / Gian', 12], ['Mã vận đơn', 12], ['Loại / Lý do trả', 13], ['Sản phẩm', 19], ['KHO', 6],
+    ['Thời gian trả trên hệ thống', 8], ['Trạng thái', 11], ['Ghi chú', 10], ['Phụ trách / Tồn', 6]];
+  function autoH(t) { t.style.height = 'auto'; t.style.height = t.scrollHeight + 2 + 'px'; }
+  function loadView() { try { return localStorage.getItem('viewMode') === 'full' ? 'full' : 'compact'; } catch (e) { return 'compact'; } }
+  function setView(v) {
+    S.view = v;
+    try { localStorage.setItem('viewMode', v); } catch (e) { }
+    render();
+  }
 
   function render() {
     if (!S.data) return;
-    var all = S.data.cases, open = all.filter(function (c) { return !isClosed(c); });
+    var f = filterState(), base = baseMatcher(f);
+    var open = S.data.cases.filter(function (c) { return !isClosed(c) && base(c); });
     var cnt = function (st) { return open.filter(function (c) { return c.trang_thai === st; }).length; };
     $('cChuaTim').textContent = cnt('Chưa tìm thấy'); $('cMoi').textContent = cnt('Mới'); $('cChuaVe').textContent = cnt('Chưa về kho');
     $('cTon').textContent = open.filter(function (c) { return days(c) >= 7; }).length;
+    $('statNote').hidden = !(f.san || f.gian || f.kho || f.tuan || f.owner || f.codes.length);
 
+    var compact = S.view !== 'full';
+    $('btnView').textContent = compact ? 'Dạng bảng đầy đủ' : 'Dạng gọn';
+    $('tbl').className = compact ? 'compact' : 'full';
     var rows = filtered(), pages = Math.max(1, Math.ceil(rows.length / PAGE));
     if (S.page > pages) S.page = pages;
     var view = rows.slice((S.page - 1) * PAGE, S.page * PAGE), own = owners(), auth = !!S.user;
@@ -157,8 +184,10 @@
     $('pInfo').textContent = 'Trang ' + S.page + '/' + pages;
     $('pPrev').disabled = S.page <= 1; $('pNext').disabled = S.page >= pages;
     var editable = view.filter(canEdit), allSel = editable.length && editable.every(function (c) { return S.sel[c.ma]; });
-    $('tbl').tHead.innerHTML = '<tr>' + (auth ? '<th><input type="checkbox" id="selAll"' + (allSel ? ' checked' : '') + '></th>' : '') +
-      COLS.map(function (h) { return '<th>' + esc(h) + '</th>'; }).join('') + '</tr>';
+    var chk = auth ? '<th><input type="checkbox" id="selAll"' + (allSel ? ' checked' : '') + '></th>' : '';
+    $('tbl').querySelector('colgroup').innerHTML = compact ? (auth ? '<col style="width:3%">' : '') + COLS_C.map(function (c) { return '<col style="width:' + c[1] + '%">'; }).join('') : '';
+    $('tbl').tHead.innerHTML = '<tr>' + chk + (compact ? COLS_C.map(function (c) { return c[0]; }) : COLS).map(function (h) { return '<th>' + esc(h) + '</th>'; }).join('') + '</tr>';
+    var ncol = (compact ? COLS_C.length : COLS.length) + (auth ? 1 : 0);
     $('tbl').tBodies[0].innerHTML = view.map(function (c) {
       var ed = canEdit(c), d = days(c), ma = esc(c.ma), cls = (isClosed(c) ? 'closed' : '') + (S.rowErr[c.ma] ? ' rowerr' : '');
       var kho, tt, note, tg, tuan, lydo;
@@ -166,8 +195,10 @@
         kho = '<select data-ma="' + ma + '" data-f="kho" class="' + (KHO_CLS[c.kho] || '') + '">' + opts(S.data.config.kho_list, c.kho, '') + '</select>';
         var stList = isClosed(c) && S.user.role !== 'admin' ? ST_CLOSED : ST_ALL;
         tt = '<select data-ma="' + ma + '" data-f="trang_thai" class="' + (ST_CLS[c.trang_thai] || '') + '">' + opts(stList, c.trang_thai) + '</select>';
-        note = '<input class="note" data-ma="' + ma + '" data-f="ghi_chu" value="' + esc(c.ghi_chu) + '">';
-        lydo = '<input class="note" maxlength="300" data-ma="' + ma + '" data-f="ly_do_tra" value="' + esc(c.ly_do_tra) + '">';
+        note = compact ? '<textarea class="note auto" rows="1" data-ma="' + ma + '" data-f="ghi_chu">' + esc(c.ghi_chu) + '</textarea>'
+          : '<input class="note" data-ma="' + ma + '" data-f="ghi_chu" value="' + esc(c.ghi_chu) + '">';
+        lydo = compact ? '<textarea class="note auto" rows="1" maxlength="300" data-ma="' + ma + '" data-f="ly_do_tra">' + esc(c.ly_do_tra) + '</textarea>'
+          : '<input class="note" maxlength="300" data-ma="' + ma + '" data-f="ly_do_tra" value="' + esc(c.ly_do_tra) + '">';
         tg = '<input class="tg" data-ma="' + ma + '" data-f="thoi_gian_tra" value="' + esc(c.thoi_gian_tra) + '">';
         tuan = wkHtml('data-ma="' + ma + '" data-f="tuan"', c.tuan);
       } else {
@@ -175,13 +206,21 @@
         tt = '<span class="badge ' + (ST_CLS[c.trang_thai] || '') + '">' + esc(c.trang_thai) + '</span>';
         note = esc(c.ghi_chu); tg = esc(c.thoi_gian_tra); tuan = esc(c.tuan); lydo = esc(c.ly_do_tra);
       }
+      var nhom = esc(nhomOf(c.gian) || c.san), tonCls = d !== '' && d >= 7 ? 'ton7' : '';
+      var cells = compact ? [
+        '<div>' + tuan + '</div><div class="gian">' + esc(c.gian) + ' <span class="nhom">' + nhom + '</span></div>',
+        '<div class="mabig">' + ma + '</div>' + ([c.ma_don_hang, c.dvvc].filter(Boolean).length ? '<div class="sub">' + [c.ma_don_hang ? '<span class="mono">' + esc(c.ma_don_hang) + '</span>' : '', esc(c.dvvc)].filter(Boolean).join(' · ') + '</div>' : ''),
+        '<div><span class="loai">' + esc(c.loai_tep) + '</span></div><div>' + lydo + '</div>',
+        '<div class="spname">' + esc(c.ten_sp) + '</div>' + (c.phan_loai ? '<div class="sub">' + esc(c.phan_loai) + '</div>' : ''),
+        kho, tg, tt, note,
+        '<div>' + esc(own[c.gian] || '') + '</div><div class="' + tonCls + '">' + (d !== '' ? esc(d) + ' ngày' : '') + '</div>'
+      ] : [tuan, nhom, esc(c.gian), '<span class="mono">' + ma + '</span>', esc(c.loai_tep), lydo, '<div class="spname">' + esc(c.ten_sp) + '</div>', esc(c.phan_loai),
+        '<span class="mono">' + esc(c.ma_don_hang) + '</span>', esc(c.dvvc), kho, tg, tt, note, esc(own[c.gian] || ''), '<span class="' + tonCls + '">' + esc(d) + '</span>'];
       return '<tr class="' + cls + '"' + (S.rowErr[c.ma] ? ' title="' + esc(S.rowErr[c.ma]) + '"' : '') + '>' +
         (auth ? '<td>' + (ed ? '<input type="checkbox" data-sel="' + ma + '"' + (S.sel[c.ma] ? ' checked' : '') + '>' : '') + '</td>' : '') +
-        '<td>' + tuan + '</td><td>' + esc(nhomOf(c.gian) || c.san) + '</td><td>' + esc(c.gian) + '</td><td class="ma">' + ma + '</td><td>' + esc(c.loai_tep) + '</td><td class="sp">' + lydo +
-        '</td><td class="sp">' + esc(c.ten_sp) + '</td><td>' + esc(c.phan_loai) + '</td><td class="ma">' + esc(c.ma_don_hang) + '</td><td>' + esc(c.dvvc) +
-        '</td><td>' + kho + '</td><td>' + tg + '</td><td>' + tt + '</td><td>' + note + '</td><td>' + esc(own[c.gian] || '') +
-        '</td><td class="' + (d !== '' && d >= 7 ? 'ton7' : '') + '">' + esc(d) + '</td></tr>';
-    }).join('') || '<tr><td colspan="17" class="muted">Không có đơn nào</td></tr>';
+        cells.map(function (x) { return '<td>' + x + '</td>'; }).join('') + '</tr>';
+    }).join('') || '<tr><td colspan="' + ncol + '" class="muted">Không có đơn nào</td></tr>';
+    $('tbl').querySelectorAll('textarea.auto').forEach(autoH);
     renderBulk();
   }
 
@@ -569,6 +608,8 @@
     $('fSan').onchange = function () { S.page = 1; $('fGian').value = ''; fillFilters(); render(); };
     $('fMa').oninput = function () { S.page = 1; render(); };
     $('pPrev').onclick = function () { S.page--; render(); };
+    $('btnView').onclick = function () { setView(S.view === 'full' ? 'compact' : 'full'); };
+    $('btnClearF').onclick = clearFilters;
     $('pNext').onclick = function () { S.page++; render(); };
 
     var tb = $('tbl');
@@ -586,7 +627,10 @@
       }
       if (t.dataset.f) { var fl = {}; fl[t.dataset.f] = t.value; saveItems([{ ma: t.dataset.ma, fields: fl }]); }
     });
-    tb.addEventListener('input', function (e) { if (e.target.classList.contains('wk')) wkTyping(e.target); });
+    tb.addEventListener('input', function (e) {
+      if (e.target.classList.contains('wk')) wkTyping(e.target);
+      if (e.target.classList.contains('auto')) autoH(e.target);
+    });
     wkBind($('bulkTuan'), function (w) { $('bulkTuanBtn').disabled = !w; });
     $('bulkTuanBtn').onclick = function () {
       var w = wkCheck($('bulkTuan'), true);
@@ -612,6 +656,7 @@
     });
   }
 
+  S.view = loadView();
   bind();
   var tk = load('token');
   if (tk) {

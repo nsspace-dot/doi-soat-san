@@ -31,6 +31,7 @@
     <div class="card c-chuave"><b id="cChuaVe">0</b><span>Chưa về kho</span></div>
     <div class="card c-ton"><b id="cTon">0</b><span>Tồn ≥ 7 ngày</span></div>
   </section>
+  <p id="statNote" class="statnote" hidden>Đang tính theo bộ lọc <button id="btnClearF" type="button">Xóa bộ lọc</button></p>
   <section class="filters">
     <label>Sàn<select id="fSan"></select></label>
     <label>Gian<select id="fGian"></select></label>
@@ -41,6 +42,7 @@
     <label class="grow">Mã vận đơn<textarea id="fMa" rows="1" placeholder="Dán 1 hoặc nhiều mã (cách nhau dòng/dấu cách)"></textarea></label>
     <label class="chk"><input type="checkbox" id="fClosed"> Hiện đơn đã đóng (giữ 14 ngày)</label>
     <span id="fCount" class="muted"></span>
+    <button id="btnView" type="button">Dạng bảng đầy đủ</button>
   </section>
   <section id="bulk" class="bulk" hidden>
     <b id="bulkCount"></b>
@@ -49,7 +51,7 @@
     <span class="wkbox"><input id="bulkTuan" class="wk" type="text" inputmode="numeric" maxlength="13" placeholder="DD/MM - DD/MM" autocomplete="off"><span class="wkerr"></span></span><button id="bulkTuanBtn" disabled>Đặt tuần</button>
     <button id="bulkClear">Bỏ chọn</button>
   </section>
-  <div class="tableWrap"><table id="tbl"><thead></thead><tbody></tbody></table></div>
+  <div class="tableWrap"><table id="tbl"><colgroup></colgroup><thead></thead><tbody></tbody></table></div>
   <div class="pager"><button id="pPrev">‹ Trước</button><span id="pInfo"></span><button id="pNext">Sau ›</button></div>
 </main>
 
