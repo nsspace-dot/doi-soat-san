@@ -3,8 +3,8 @@ GET công khai: `?action=list`. POST: body JSON gửi `Content-Type: text/plain`
 Thành công: `{ok:true, ...}`. Lỗi: `{ok:false, code, message}` (message tiếng Việt).
 
 ## GET list
-→ `{cases[], khoMeta{lastUpdate,by,count}, config{kho_list[], gians[{san,ten,owner,alias[]}]}, weekly[{tuan,gian,total,found,complained,lost}]}`
-Cache ~60s, xóa sau mỗi lần ghi. Case có đủ cột tab Cases (xem SETUP/Code.gs). Số ngày tồn: client tự tính từ created_at → closed_at/now.
+→ `{cases[], khoMeta{lastUpdate,by,count}, config{kho_list[], gians[{san,ten,owner,owner_name,alias[]}]}, weekly[{tuan,gian,total,found,complained,lost}]}`
+owner_name = tên hiển thị (cột name tab Users) của owner. Cache ~60s, xóa sau mỗi lần ghi. Case có đủ cột tab Cases (xem SETUP/Code.gs). Số ngày tồn: client tự tính từ created_at → closed_at/now.
 
 ## POST
 | action | tham số | kết quả |
@@ -16,6 +16,7 @@ Cache ~60s, xóa sau mỗi lần ghi. Case có đủ cột tab Cases (xem SETUP/
 | ingest_san | token, tuan (Thứ 2 yyyy-MM-dd), gian (tên đầy đủ), rows[{ma, loai_tep, ten_sp, phan_loai, ma_don_hang, dvvc}], dry_run | read, dupInFile, existedCase, existedClosed, matchedKho, created, khoLastUpdate |
 | update_cases | token, items[{ma, fields{kho, trang_thai, ghi_chu, thoi_gian_tra, tuan}}] | updated, errors[{ma,code,message}] |
 | admin_upsert_user | token (admin), username, name?, role?, gians?, pin?, active? | user |
+| admin_list_users | token (admin) | users[{username,name,role,gians,active}] (không có PIN/salt/hash) |
 
 - Mọi action trừ login cần token (hết hạn sau token_hours, tối đa 6h). Sai PIN 5 lần/15 phút → LOCKED.
 - loai_tep: `Trả hàng` | `Giao không thành công`. kho: một giá trị trong kho_list hoặc rỗng.

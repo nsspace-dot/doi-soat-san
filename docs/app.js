@@ -53,6 +53,7 @@
     S.user = user; S.token = token || '';
     store('token', user ? S.token : null);
     document.querySelectorAll('.auth').forEach(function (el) { el.hidden = !user; });
+    document.querySelectorAll('.admin').forEach(function (el) { el.hidden = !user || user.role !== 'admin'; });
     $('btnLogin').hidden = !!user;
     $('userName').textContent = user ? user.name + ' (' + (user.role === 'admin' ? 'admin' : 'đối soát') + ')' : '';
     if (!user) { S.sel = {}; showView('list'); }
@@ -85,6 +86,8 @@
     $('fKho').innerHTML = opts(d.config.kho_list.concat([{ v: '-', t: '(Trống)' }]), keep('fKho'), 'Tất cả');
     $('fTuan').innerHTML = opts(uniq(function (c) { return c.tuan; }).reverse().map(function (t) { return { v: t, t: P.fmtWeek(t) }; }), keep('fTuan'), 'Tất cả');
     $('fTt').innerHTML = opts(ST_ALL, keep('fTt'), 'Tất cả');
+    var own = owners();
+    $('fOwner').innerHTML = opts(d.config.gians.map(function (g) { return own[g.ten]; }).filter(function (v, i, a) { return v && a.indexOf(v) === i; }).sort(), keep('fOwner'), 'Tất cả');
     $('bulkKho').innerHTML = opts(d.config.kho_list.concat([{ v: '-', t: '(Trống)' }]), '', '— KHO —');
     $('bulkTt').innerHTML = opts(ST_ALL, '', '— Trạng thái —');
     var km = d.khoMeta || {};
@@ -93,14 +96,15 @@
 
   function owners() {
     var m = {};
-    ((S.data && S.data.config.gians) || []).forEach(function (g) { m[g.ten] = g.owner; });
+    ((S.data && S.data.config.gians) || []).forEach(function (g) { m[g.ten] = g.owner_name || g.owner; });
     return m;
   }
   function isClosed(c) { return ST_CLOSED.indexOf(c.trang_thai) >= 0; }
   function days(c) { return P.daysOpen(c.created_at, isClosed(c) ? c.closed_at : '', new Date()); }
 
   function filtered() {
-    var f = { san: $('fSan').value, gian: $('fGian').value, kho: $('fKho').value, tuan: $('fTuan').value, tt: $('fTt').value, closed: $('fClosed').checked };
+    var f = { san: $('fSan').value, gian: $('fGian').value, kho: $('fKho').value, tuan: $('fTuan').value, tt: $('fTt').value, owner: $('fOwner').value, closed: $('fClosed').checked };
+    var own = owners();
     var codes = P.splitCodes($('fMa').value), set = {};
     codes.forEach(function (c) { set[c] = 1; });
     return S.data.cases.filter(function (c) {
@@ -110,6 +114,7 @@
       if (f.kho && (f.kho === '-' ? c.kho : c.kho !== f.kho)) return false;
       if (f.tuan && c.tuan !== f.tuan) return false;
       if (f.tt && c.trang_thai !== f.tt) return false;
+      if (f.owner && own[c.gian] !== f.owner) return false;
       if (codes.length === 1 && String(c.ma).indexOf(codes[0]) < 0) return false;
       if (codes.length > 1 && !set[c.ma]) return false;
       return true;
@@ -155,7 +160,7 @@
       return '<tr class="' + cls + '"' + (S.rowErr[c.ma] ? ' title="' + esc(S.rowErr[c.ma]) + '"' : '') + '>' +
         (auth ? '<td>' + (ed ? '<input type="checkbox" data-sel="' + ma + '"' + (S.sel[c.ma] ? ' checked' : '') + '>' : '') + '</td>' : '') +
         '<td>' + tuan + '</td><td>' + esc(c.san) + '</td><td>' + esc(c.gian) + '</td><td class="ma">' + ma + '</td><td>' + esc(c.loai_tep) +
-        '</td><td class="sp">' + esc(c.ten_sp) + '</td><td>' + esc(c.phan_loai) + '</td><td>' + esc(c.ma_don_hang) + '</td><td>' + esc(c.dvvc) +
+        '</td><td class="sp">' + esc(c.ten_sp) + '</td><td>' + esc(c.phan_loai) + '</td><td class="ma">' + esc(c.ma_don_hang) + '</td><td>' + esc(c.dvvc) +
         '</td><td>' + kho + '</td><td>' + tg + '</td><td>' + tt + '</td><td>' + note + '</td><td>' + esc(own[c.gian] || '') +
         '</td><td class="' + (d !== '' && d >= 7 ? 'ton7' : '') + '">' + esc(d) + '</td></tr>';
     }).join('') || '<tr><td colspan="16" class="muted">Không có đơn nào</td></tr>';
@@ -299,8 +304,41 @@
   }
 
   function showView(v) {
-    $('listView').hidden = v !== 'list'; $('uploadView').hidden = v !== 'upload';
+    $('listView').hidden = v !== 'list'; $('uploadView').hidden = v !== 'upload'; $('staffView').hidden = v !== 'staff';
+    if (v === 'staff') loadStaff();
     if (v === 'list') { $('khoFiles').value = ''; $('sanFiles').value = ''; $('khoInfo').innerHTML = ''; $('khoResult').innerHTML = ''; $('sanList').innerHTML = ''; $('khoSave').disabled = true; }
+  }
+
+  // ---------- Nhân viên (admin) ----------
+  function loadStaff() {
+    var tb = $('tblStaff').tBodies[0];
+    tb.innerHTML = '<tr><td colspan="7">Đang tải...</td></tr>';
+    api('admin_list_users').then(function (j) {
+      tb.innerHTML = j.users.map(function (u) {
+        var me = u.username === S.user.username, un = esc(u.username);
+        return '<tr class="' + (u.active ? '' : 'closed') + '"><td>' + esc(u.name) + '</td><td class="ma">' + un + '</td><td>' + (u.role === 'admin' ? 'Admin' : 'Đối soát') +
+          '</td><td>' + esc((u.gians || []).join(', ')) + '</td><td><span class="badge ' + (u.active ? 's-datim' : 's-mat') + '">' + (u.active ? 'Đang bật' : 'Đã tắt') + '</span></td>' +
+          '<td><input type="password" class="tg" data-pin="' + un + '" placeholder="PIN mới ≥ 6 ký tự" autocomplete="new-password"> <button data-reset="' + un + '">Đặt lại PIN</button></td>' +
+          '<td>' + (me ? '<span class="muted">(bạn)</span>' : '<button data-toggle="' + un + '" data-active="' + (u.active ? 1 : 0) + '">' + (u.active ? 'Tắt tài khoản' : 'Bật tài khoản') + '</button>') + '</td></tr>';
+      }).join('') || '<tr><td colspan="7">Chưa có nhân viên</td></tr>';
+    }).catch(function (e) { tb.innerHTML = '<tr><td colspan="7" class="err">' + esc(errText(e)) + '</td></tr>'; });
+  }
+  function onStaffClick(e) {
+    var b = e.target, un = b.dataset && (b.dataset.reset || b.dataset.toggle);
+    if (!un) return;
+    var body = { username: un };
+    if (b.dataset.reset) {
+      var inp = $('tblStaff').querySelector('input[data-pin="' + CSS.escape(un) + '"]'), pin = inp.value;
+      if (pin.length < 6) return msg('PIN tối thiểu 6 ký tự', 'err');
+      body.pin = pin;
+    } else {
+      body.active = b.dataset.active !== '1';
+      if (!confirm((body.active ? 'Bật' : 'Tắt') + ' tài khoản ' + un + '?')) return;
+    }
+    b.disabled = true;
+    api('admin_upsert_user', body).then(function () {
+      msg(body.pin ? 'Đã đặt lại PIN cho ' + un : 'Đã ' + (body.active ? 'bật' : 'tắt') + ' tài khoản ' + un, 'ok'); loadStaff();
+    }).catch(function (x) { b.disabled = false; msg(errText(x), 'err'); });
   }
 
   // ---------- Sự kiện ----------
@@ -311,6 +349,9 @@
     $('btnPin').onclick = function () { $('pinErr').textContent = ''; $('formPin').reset(); $('dlgPin').showModal(); };
     $('btnUpload').onclick = function () { showView('upload'); };
     $('btnBack').onclick = function () { showView('list'); };
+    $('btnStaff').onclick = function () { showView('staff'); };
+    $('btnBack2').onclick = function () { showView('list'); };
+    $('tblStaff').addEventListener('click', onStaffClick);
     document.querySelectorAll('[data-close]').forEach(function (b) { b.onclick = function () { b.closest('dialog').close(); }; });
 
     $('formLogin').onsubmit = function (e) {
@@ -329,7 +370,7 @@
       }).catch(function (x) { $('pinErr').textContent = errText(x); });
     };
 
-    ['fGian', 'fKho', 'fTuan', 'fTt', 'fClosed'].forEach(function (id) { $(id).onchange = function () { S.page = 1; render(); }; });
+    ['fGian', 'fKho', 'fTuan', 'fTt', 'fOwner', 'fClosed'].forEach(function (id) { $(id).onchange = function () { S.page = 1; render(); }; });
     $('fSan').onchange = function () { S.page = 1; $('fGian').value = ''; fillFilters(); render(); };
     $('fMa').oninput = function () { S.page = 1; render(); };
     $('pPrev').onclick = function () { S.page--; render(); };

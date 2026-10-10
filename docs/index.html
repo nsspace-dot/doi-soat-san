@@ -9,11 +9,12 @@
 </head>
 <body>
 <header>
-  <div class="brand"><h1>Đối soát đơn lệch Shopee/TikTok</h1><div id="khoMeta" class="muted"></div></div>
+  <div class="brand"><h1>❖ Đối soát đơn lệch Shopee · TikTok ❖</h1><div id="khoMeta" class="meta"></div></div>
   <div class="actions">
     <button id="btnRefresh">Làm mới</button>
     <button id="btnUpload" class="auth" hidden>Tải file</button>
-    <span id="userName" class="auth muted" hidden></span>
+    <button id="btnStaff" class="admin" hidden>Nhân viên</button>
+    <span id="userName" class="auth who" hidden></span>
     <button id="btnPin" class="auth" hidden>Đổi PIN</button>
     <button id="btnLogout" class="auth" hidden>Đăng xuất</button>
     <button id="btnLogin" class="primary">Đăng nhập</button>
@@ -34,6 +35,7 @@
     <label>KHO<select id="fKho"></select></label>
     <label>Tuần<select id="fTuan"></select></label>
     <label>Trạng thái<select id="fTt"></select></label>
+    <label>Phụ trách<select id="fOwner"></select></label>
     <label class="grow">Mã vận đơn<textarea id="fMa" rows="1" placeholder="Dán 1 hoặc nhiều mã (cách nhau dòng/dấu cách)"></textarea></label>
     <label class="chk"><input type="checkbox" id="fClosed"> Hiện đơn đã đóng (giữ 14 ngày)</label>
     <span id="fCount" class="muted"></span>
@@ -61,6 +63,14 @@
     <h2>B. File sàn (trả hàng / giao không thành công)</h2>
     <input type="file" id="sanFiles" multiple accept=".xlsx,.xls,.csv">
     <div id="sanList"></div>
+  </section>
+</main>
+
+<main id="staffView" hidden>
+  <p><button id="btnBack2">‹ Về danh sách</button></p>
+  <section class="box">
+    <h2>Nhân viên</h2>
+    <div class="tableWrap"><table id="tblStaff"><thead><tr><th>Tên hiển thị</th><th>Tên đăng nhập</th><th>Vai trò</th><th>Gian phụ trách</th><th>Trạng thái</th><th>Đặt lại PIN</th><th></th></tr></thead><tbody></tbody></table></div>
   </section>
 </main>
 

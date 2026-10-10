@@ -230,11 +230,12 @@ function cachedList() {
   return s;
 }
 function buildList() {
-  var cfg = getConfig(), kl = JSON.parse(PropertiesService.getScriptProperties().getProperty('kho_last') || '{}');
+  var cfg = getConfig(), kl = JSON.parse(PropertiesService.getScriptProperties().getProperty('kho_last') || '{}'), names = {};
+  readRows('Users', 2).forEach(function (r) { names[String(r[0]).trim().toLowerCase()] = String(r[1]); });
   return {
     cases: readRows('Cases').map(function (r) { return toObj('Cases', r); }),
     khoMeta: { lastUpdate: kl.lastUpdate || '', by: kl.by || '', count: Math.max(0, sheet('Kho').getLastRow() - 1) },
-    config: { kho_list: cfg.kho_list, gians: cfg.gians.map(function (g) { return { san: g.san, ten: g.ten, owner: g.owner, alias: g.alias }; }) },
+    config: { kho_list: cfg.kho_list, gians: cfg.gians.map(function (g) { return { san: g.san, ten: g.ten, owner: g.owner, owner_name: names[g.owner] || g.owner, alias: g.alias }; }) },
     weekly: readWeekly()
   };
 }
@@ -255,7 +256,8 @@ var ACTIONS = {
   ingest_kho: { write: true, fn: actIngestKho },
   ingest_san: { write: function (b) { return !b.dry_run; }, fn: actIngestSan },
   update_cases: { write: true, fn: actUpdateCases },
-  admin_upsert_user: { write: true, fn: actAdminUpsertUser }
+  admin_upsert_user: { write: true, fn: actAdminUpsertUser },
+  admin_list_users: { fn: actAdminListUsers }
 };
 
 function doPost(e) {
@@ -348,6 +350,12 @@ function actChangePin(user, b) {
   upsertUser({ username: user.username }, String(b.new_pin));
   logAction(user.username, 'change_pin', {});
   return {};
+}
+
+function actAdminListUsers(user) {
+  if (user.role !== 'admin') throw err('FORBIDDEN', 'Chỉ admin được quản lý người dùng');
+  return { users: readRows('Users').map(parseUser).filter(function (u) { return u.username; })
+    .map(function (u) { return Object.assign(publicUser(u), { active: u.active }); }) };
 }
 
 function actAdminUpsertUser(user, b) {
