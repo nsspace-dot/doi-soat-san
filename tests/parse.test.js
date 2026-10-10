@@ -28,4 +28,6 @@ assert.deepStrictEqual([k.column, k.rows, d.unique, d.dup], ['Code', 3, ['SPXVN1
 assert.strictEqual(P.cellToStr({ t: 'n', v: 852123456789012, w: '852123456789012' }), '852123456789012');
 assert.strictEqual(P.cellToStr({ t: 's', v: '8.52123456789012E+14' }), '852123456789012');
 assert.ok(P.parseSan([['Tên'], ['x']]).error);
+assert.deepStrictEqual([P.formatWeekTyping('05101110'), P.formatWeekTyping('051'), P.formatWeekTyping('5/10-1')], ['05/10 - 11/10', '05/1', '5/10-1']);
+assert.deepStrictEqual([P.normalizeWeek('5/10 – 11/10', '2026-10-10').tuan, P.normalizeWeek('31/02 - 06/03', '2026-10-10')], ['05/10 - 11/10', null]);
 console.log('OK: parse test qua');

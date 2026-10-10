@@ -84,7 +84,9 @@
     var gians = d.config.gians.filter(function (g) { return !san || g.san === san; }).map(function (g) { return g.ten; });
     $('fGian').innerHTML = opts(gians, keep('fGian'), 'Tất cả');
     $('fKho').innerHTML = opts(d.config.kho_list.concat([{ v: '-', t: '(Trống)' }]), keep('fKho'), 'Tất cả');
-    $('fTuan').innerHTML = opts(uniq(function (c) { return c.tuan; }).reverse().map(function (t) { return { v: t, t: P.fmtWeek(t) }; }), keep('fTuan'), 'Tất cả');
+    var wk = {};
+    cs.forEach(function (c) { if (c.tuan_key) wk[c.tuan_key] = c.tuan; });
+    $('fTuan').innerHTML = opts(Object.keys(wk).sort().reverse().map(function (k) { return { v: k, t: wk[k] }; }), keep('fTuan'), 'Tất cả');
     $('fTt').innerHTML = opts(ST_ALL, keep('fTt'), 'Tất cả');
     var own = owners();
     $('fOwner').innerHTML = opts(d.config.gians.map(function (g) { return own[g.ten]; }).filter(function (v, i, a) { return v && a.indexOf(v) === i; }).sort(), keep('fOwner'), 'Tất cả');
@@ -112,13 +114,13 @@
       if (f.san && c.san !== f.san) return false;
       if (f.gian && c.gian !== f.gian) return false;
       if (f.kho && (f.kho === '-' ? c.kho : c.kho !== f.kho)) return false;
-      if (f.tuan && c.tuan !== f.tuan) return false;
+      if (f.tuan && c.tuan_key !== f.tuan) return false;
       if (f.tt && c.trang_thai !== f.tt) return false;
       if (f.owner && own[c.gian] !== f.owner) return false;
       if (codes.length === 1 && String(c.ma).indexOf(codes[0]) < 0) return false;
       if (codes.length > 1 && !set[c.ma]) return false;
       return true;
-    }).sort(function (a, b) { return (b.tuan || '').localeCompare(a.tuan || '') || String(a.created_at).localeCompare(String(b.created_at)); });
+    }).sort(function (a, b) { return String(b.tuan_key || '').localeCompare(String(a.tuan_key || '')) || String(a.created_at).localeCompare(String(b.created_at)); });
   }
 
   var COLS = ['Tuần', 'Sàn', 'Gian', 'Mã vận đơn', 'Loại tệp', 'Tên sản phẩm', 'Phân loại', 'Mã đơn hàng', 'ĐVVC', 'KHO',
@@ -140,7 +142,6 @@
     var editable = view.filter(canEdit), allSel = editable.length && editable.every(function (c) { return S.sel[c.ma]; });
     $('tbl').tHead.innerHTML = '<tr>' + (auth ? '<th><input type="checkbox" id="selAll"' + (allSel ? ' checked' : '') + '></th>' : '') +
       COLS.map(function (h) { return '<th>' + esc(h) + '</th>'; }).join('') + '</tr>';
-    var weeks = P.recentWeeks(new Date(), 12);
     $('tbl').tBodies[0].innerHTML = view.map(function (c) {
       var ed = canEdit(c), d = days(c), ma = esc(c.ma), cls = (isClosed(c) ? 'closed' : '') + (S.rowErr[c.ma] ? ' rowerr' : '');
       var kho, tt, note, tg, tuan;
@@ -150,12 +151,11 @@
         tt = '<select data-ma="' + ma + '" data-f="trang_thai" class="' + (ST_CLS[c.trang_thai] || '') + '">' + opts(stList, c.trang_thai) + '</select>';
         note = '<input class="note" data-ma="' + ma + '" data-f="ghi_chu" value="' + esc(c.ghi_chu) + '">';
         tg = '<input class="tg" data-ma="' + ma + '" data-f="thoi_gian_tra" value="' + esc(c.thoi_gian_tra) + '">';
-        var wl = weeks.indexOf(c.tuan) < 0 ? [c.tuan].concat(weeks) : weeks;
-        tuan = '<select data-ma="' + ma + '" data-f="tuan">' + opts(wl.map(function (w) { return { v: w, t: P.fmtWeek(w) }; }), c.tuan) + '</select>';
+        tuan = wkHtml('data-ma="' + ma + '" data-f="tuan"', c.tuan);
       } else {
         kho = c.kho ? '<span class="badge ' + (KHO_CLS[c.kho] || '') + '">' + esc(c.kho) + '</span>' : '';
         tt = '<span class="badge ' + (ST_CLS[c.trang_thai] || '') + '">' + esc(c.trang_thai) + '</span>';
-        note = esc(c.ghi_chu); tg = esc(c.thoi_gian_tra); tuan = esc(P.fmtWeek(c.tuan));
+        note = esc(c.ghi_chu); tg = esc(c.thoi_gian_tra); tuan = esc(c.tuan);
       }
       return '<tr class="' + cls + '"' + (S.rowErr[c.ma] ? ' title="' + esc(S.rowErr[c.ma]) + '"' : '') + '>' +
         (auth ? '<td>' + (ed ? '<input type="checkbox" data-sel="' + ma + '"' + (S.sel[c.ma] ? ' checked' : '') + '>' : '') + '</td>' : '') +
@@ -189,6 +189,29 @@
     }).catch(function (e) { msg('Lưu thất bại: ' + errText(e), 'err'); render(); });
   }
   function findCase(ma) { return S.data.cases.filter(function (c) { return c.ma === ma; })[0]; }
+
+  // ---------- Ô nhập tuần "DD/MM - DD/MM" ----------
+  function wkHtml(attrs, val) {
+    return '<span class="wkbox"><input class="wk" type="text" inputmode="numeric" maxlength="13" placeholder="DD/MM - DD/MM" autocomplete="off" ' +
+      attrs + ' value="' + esc(val || '') + '"><span class="wkerr"></span></span>';
+  }
+  function wkCheck(inp, final) {
+    var v = inp.value.trim(), w = v ? P.normalizeWeek(v, P.ymd(new Date())) : null;
+    if (final && w) inp.value = w.tuan;
+    var bad = !!v && !w && (final || v.length >= 13), er = inp.parentNode.querySelector('.wkerr');
+    inp.classList.toggle('bad', bad);
+    if (er) er.textContent = bad ? P.WEEK_ERR : '';
+    return w;
+  }
+  function wkTyping(inp) {
+    var f = P.formatWeekTyping(inp.value);
+    if (f !== inp.value) inp.value = f;
+    return wkCheck(inp, false);
+  }
+  function wkBind(inp, cb) {
+    inp.addEventListener('input', function () { cb(wkTyping(inp)); });
+    inp.addEventListener('blur', function () { cb(wkCheck(inp, true)); });
+  }
 
   // ---------- Tải file ----------
   function readWb(file) {
@@ -269,26 +292,32 @@
     if (r.error) { div.innerHTML = '<b>' + esc(it.f.name) + '</b><div class="err">' + esc(r.error) + ' — file không được ghi.</div>'; return; }
     var gians = myGians(), g = gians.filter(function (x) { return x.ten === it.gian; })[0];
     var mismatch = g && g.san !== r.san, skip = r.skipped.noMa + r.skipped.badMa;
-    var weeks = P.recentWeeks(new Date(), 8).map(function (w) { return { v: w, t: 'Tuần ' + P.fmtWeek(w) }; });
-    var ready = g && it.tuan && !mismatch && r.rows.length && !it.done && !it.busy;
+    var ready = g && it.wk && !mismatch && r.rows.length && !it.done && !it.busy;
     div.innerHTML = '<b>' + esc(it.f.name) + '</b>' +
       '<div>Nhận diện: <b>' + esc(r.san) + ' — ' + esc(r.loai_tep) + '</b>. ' + r.total + ' dòng, ' + r.rows.length + ' dòng có mã.' +
       (skip ? ' <span class="warn">Bỏ ' + skip + ' dòng: ' + [r.skipped.noMa ? r.skipped.noMa + ' không có mã vận đơn' : '', r.skipped.badMa ? r.skipped.badMa + ' mã không hợp lệ (có khoảng trắng/quá ngắn)' : ''].filter(Boolean).join(', ') + '</span>' : '') + '</div>' +
       '<div class="row"><label>Gian <select data-k="gian">' + opts(gians.map(function (x) { return { v: x.ten, t: x.ten }; }), it.gian, '— Chọn gian —') + '</select></label>' +
-      '<label>Tuần <select data-k="tuan">' + opts(weeks, it.tuan || '', '— Chọn tuần —') + '</select></label>' +
+      '<label>Tuần ' + wkHtml('data-k="tuan"', it.tuan) + '</label>' +
       '<button data-a="preview"' + (ready ? '' : ' disabled') + '>Xem trước</button>' +
       '<button data-a="save" class="primary"' + (ready ? '' : ' disabled') + '>Ghi</button></div>' +
       (mismatch ? '<div class="err">File là ' + esc(r.san) + ' nhưng gian đã chọn thuộc ' + esc(g.san) + ' — không thể ghi.</div>' : '') +
       (r.rows.length > CHUNK ? '<div class="err">File quá ' + CHUNK + ' dòng, hãy tách nhỏ.</div>' : '') +
       '<div class="res">' + (it.res || '') + '</div>';
     div.querySelectorAll('select').forEach(function (s) { s.onchange = function () { it[s.dataset.k] = s.value; it.res = ''; renderSanItem(it); }; });
+    var wi = div.querySelector('input.wk');
+    if (it.tuan) wkCheck(wi, true);
+    wkBind(wi, function (w) {
+      it.tuan = wi.value; it.wk = w;
+      var ok = g && w && !mismatch && r.rows.length && !it.done && !it.busy;
+      div.querySelectorAll('button').forEach(function (b) { b.disabled = !ok; });
+    });
     div.querySelectorAll('button').forEach(function (b) { b.onclick = function () { sendSan(it, b.dataset.a === 'preview'); }; });
   }
 
   function sendSan(it, dry) {
     if (it.r.rows.length > CHUNK) return;
     it.busy = true; it.res = 'Đang xử lý...'; renderSanItem(it);
-    api('ingest_san', { tuan: it.tuan, gian: it.gian, rows: it.r.rows, dry_run: dry }).then(function (j) {
+    api('ingest_san', { tuan: it.wk.tuan, gian: it.gian, rows: it.r.rows, dry_run: dry }).then(function (j) {
       it.busy = false;
       it.res = '<div class="' + (dry ? '' : 'okc') + '">' + (dry ? 'Xem trước' : 'Đã ghi') + ': đọc ' + j.read + ', trùng trong file ' + j.dupInFile +
         ', đã có case ' + j.existedCase + ', đã đóng trước đó ' + j.existedClosed + ', khớp kho ' + j.matchedKho + ', <b>' + (dry ? 'sẽ tạo' : 'đã tạo') + ' ' + j.created + ' đơn lệch</b>' +
@@ -384,8 +413,20 @@
         return render();
       }
       if (t.dataset.sel) { t.checked ? S.sel[t.dataset.sel] = 1 : delete S.sel[t.dataset.sel]; return renderBulk(); }
+      if (t.dataset.f === 'tuan') {
+        var w = wkCheck(t, true);
+        if (w) saveItems([{ ma: t.dataset.ma, fields: { tuan: w.tuan } }]);
+        return;
+      }
       if (t.dataset.f) { var fl = {}; fl[t.dataset.f] = t.value; saveItems([{ ma: t.dataset.ma, fields: fl }]); }
     });
+    tb.addEventListener('input', function (e) { if (e.target.classList.contains('wk')) wkTyping(e.target); });
+    wkBind($('bulkTuan'), function (w) { $('bulkTuanBtn').disabled = !w; });
+    $('bulkTuanBtn').onclick = function () {
+      var w = wkCheck($('bulkTuan'), true);
+      if (!w) return;
+      saveItems(Object.keys(S.sel).map(function (ma) { return { ma: ma, fields: { tuan: w.tuan } }; })).then(function () { S.sel = {}; $('bulkTuan').value = ''; $('bulkTuanBtn').disabled = true; render(); });
+    };
     function bulk(field, sel) {
       var v = $(sel).value;
       if (!v) return msg('Hãy chọn giá trị cần đặt', 'err');

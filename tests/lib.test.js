@@ -17,9 +17,10 @@ eq(L.checkTransition(staff, 'Mới', 'Chưa tìm thấy'), null);
 eq(L.checkTransition(staff, 'Đã tìm thấy', 'Xác nhận mất'), null);
 eq(L.checkTransition(staff, 'Đã khiếu nại', 'Mới').code, 'BAD_TRANSITION');
 eq(L.checkTransition(admin, 'Đã khiếu nại', 'Mới'), null);
-eq(L.validateFields({ ma_don_hang: 'x' }, ['NVS']).error.code, 'BAD_FIELD');
+eq(L.validateFields({ ma_don_hang: 'x' }, ['NVS'], '2026-10-10').error.code, 'BAD_FIELD');
+eq(L.validateFields({ tuan: '5/10-11/10' }, ['NVS'], '2026-10-10').fields, { tuan: '05/10 - 11/10', tuan_key: '2026-10-05' });
 
-const k = (tuan, tt) => ({ tuan, gian: 'G', trang_thai: tt });
+const k = (tuan, tt) => ({ tuan, tuan_key: tuan, gian: 'G', trang_thai: tt });
 const w = L.weeklyApply([], L.weeklyDeltas(null, k('2026-10-05', 'Mới')));
 L.weeklyApply(w, L.weeklyDeltas(k('2026-10-05', 'Mới'), k('2026-10-05', 'Đã khiếu nại')));
 L.weeklyApply(w, L.weeklyDeltas(k('2026-10-05', 'Đã khiếu nại'), k('2026-10-12', 'Xác nhận mất')));
@@ -28,7 +29,10 @@ L.weeklyApply(w, L.weeklyDeltas(k('2026-10-12', 'Xác nhận mất'), k('2026-10
 eq([w[1].total, w[1].lost], [1, 0]);
 
 eq([L.isExpired('2026-08-01 00:00:00', '2026-10-10 12:00:00', 60), L.isExpired('2026-09-01 00:00:00', '2026-10-10 12:00:00', 60)], [true, false]);
-eq([L.isMonday('2026-10-05'), L.isMonday('2026-10-06'), L.isMonday('2026-02-30')], [true, false, false]);
+const W = (s, t) => L.normalizeWeek(s, t || '2026-10-10');
+eq([W('05101110'), W('05/10 – 11/10').tuan], [{ tuan: '05/10 - 11/10', tuan_key: '2026-10-05' }, '05/10 - 11/10']);
+eq([W('31/02 - 06/03'), W('01/10 - 20/10'), W('11/10 - 05/10'), W('5/10')], [null, null, null, null]);
+eq([W('29/12 - 04/01', '2027-01-02').tuan_key, W('29/12 - 04/01', '2026-12-20').tuan_key, W('02/01 - 08/01', '2026-12-28').tuan_key], ['2026-12-29', '2026-12-29', '2027-01-02']);
 
 const G = [['Shopee', 'Shopee Tường Vip', ['TV']], ['Shopee', 'Shopee Tường Vip New', ['TV NEW']], ['TikTok', 'TikTok Tường Vip', []]]
   .map(([san, ten, alias]) => ({ san, ten, alias }));

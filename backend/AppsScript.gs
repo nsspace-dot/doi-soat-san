@@ -40,7 +40,7 @@ function checkTransition(user, from, to) {
   return null;
 }
 
-function validateFields(fields, khoList) {
+function validateFields(fields, khoList, todayYmd) {
   var out = {};
   var keys = Object.keys(fields || {});
   for (var i = 0; i < keys.length; i++) {
@@ -48,7 +48,11 @@ function validateFields(fields, khoList) {
     if (EDITABLE_FIELDS.indexOf(k) < 0) return { error: { code: 'BAD_FIELD', message: 'Không được sửa cột ' + k } };
     if (k === 'kho' && v && khoList.indexOf(v) < 0) return { error: { code: 'BAD_INPUT', message: 'Kho không hợp lệ: ' + v } };
     if (k === 'trang_thai' && !isValidState(v)) return { error: { code: 'BAD_INPUT', message: 'Trạng thái không hợp lệ: ' + v } };
-    if (k === 'tuan' && !isMonday(v)) return { error: { code: 'BAD_INPUT', message: 'Tuần phải là ngày Thứ 2 (yyyy-MM-dd)' } };
+    if (k === 'tuan') {
+      var w = normalizeWeek(v, todayYmd);
+      if (!w) return { error: { code: 'BAD_INPUT', message: WEEK_ERR } };
+      out.tuan = w.tuan; out.tuan_key = w.tuan_key; continue;
+    }
     out[k] = v;
   }
   return { fields: out };
@@ -65,10 +69,10 @@ function weeklyDeltas(oldC, newC) {
   var acc = {};
   function add(c, sign) {
     if (!c) return;
-    var con = caseContrib(c), key = c.tuan + '|' + c.gian;
+    var con = caseContrib(c), key = c.tuan_key + '|' + c.gian;
     Object.keys(con).forEach(function (f) {
       var k = key + '|' + f;
-      if (!acc[k]) acc[k] = { tuan: c.tuan, gian: c.gian, field: f, delta: 0 };
+      if (!acc[k]) acc[k] = { tuan: c.tuan, tuan_key: c.tuan_key, gian: c.gian, field: f, delta: 0 };
       acc[k].delta += sign * con[f];
     });
   }
@@ -78,10 +82,10 @@ function weeklyDeltas(oldC, newC) {
 
 function weeklyApply(list, deltas) {
   var map = {};
-  list.forEach(function (w) { map[w.tuan + '|' + w.gian] = w; });
+  list.forEach(function (w) { map[w.tuan_key + '|' + w.gian] = w; });
   deltas.forEach(function (d) {
-    var k = d.tuan + '|' + d.gian;
-    if (!map[k]) { map[k] = { tuan: d.tuan, gian: d.gian, total: 0, found: 0, complained: 0, lost: 0 }; list.push(map[k]); }
+    var k = d.tuan_key + '|' + d.gian;
+    if (!map[k]) { map[k] = { tuan: d.tuan, tuan_key: d.tuan_key, gian: d.gian, total: 0, found: 0, complained: 0, lost: 0 }; list.push(map[k]); }
     map[k][d.field] = (Number(map[k][d.field]) || 0) + d.delta;
   });
   return list;
@@ -97,10 +101,26 @@ function isExpired(ts, nowTs, days) {
   return !isNaN(t) && t < parseTs(nowTs) - days * 86400000;
 }
 
-function isMonday(d) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(d))) return false;
-  var dt = new Date(parseTs(d));
-  return !isNaN(dt) && dt.toISOString().slice(0, 10) === d && dt.getUTCDay() === 1;
+var WEEK_ERR = 'Tuần phải dạng DD/MM - DD/MM, ví dụ 05/10 - 11/10';
+
+function pad2(n) { return (n < 10 ? '0' : '') + n; }
+
+// "5/10-11/10", "05/10 – 11/10", "05101110" → {tuan:'05/10 - 11/10', tuan_key:'yyyy-MM-dd'} hoặc null.
+// Năm theo ngày thao tác: tháng 12 khi đang tháng 1 → năm trước; tháng 1 khi đang tháng 12 → năm sau.
+function normalizeWeek(s, todayYmd) {
+  var t = String(s == null ? '' : s).trim(), m = /^(\d{2})(\d{2})(\d{2})(\d{2})$/.exec(t) ||
+    /^(\d{1,2})\s*\/\s*(\d{1,2})\s*[-\u2013\u2014]\s*(\d{1,2})\s*\/\s*(\d{1,2})$/.exec(t);
+  var today = /^(\d{4})-(\d{2})/.exec(String(todayYmd || ''));
+  if (!m || !today) return null;
+  var d1 = +m[1], m1 = +m[2], d2 = +m[3], m2 = +m[4], ny = +today[1], nm = +today[2];
+  var y1 = m1 === 12 && nm === 1 ? ny - 1 : m1 === 1 && nm === 12 ? ny + 1 : ny, y2 = m2 < m1 ? y1 + 1 : y1;
+  var a = Date.UTC(y1, m1 - 1, d1), b = Date.UTC(y2, m2 - 1, d2), ok = function (t, y, mo, d) {
+    var x = new Date(t); return x.getUTCFullYear() === y && x.getUTCMonth() === mo - 1 && x.getUTCDate() === d;
+  };
+  if (!ok(a, y1, m1, d1) || !ok(b, y2, m2, d2)) return null;
+  var diff = (b - a) / 86400000;
+  if (diff < 0 || diff > 13) return null;
+  return { tuan: pad2(d1) + '/' + pad2(m1) + ' - ' + pad2(d2) + '/' + pad2(m2), tuan_key: y1 + '-' + pad2(m1) + '-' + pad2(d1) };
 }
 
 function foldText(s) {
@@ -133,9 +153,9 @@ var SHEETS = {
   Users: ['username', 'name', 'role', 'gians', 'salt', 'pin_hash', 'active'],
   Kho: ['ma', 'uploaded_at', 'uploaded_by'],
   Cases: ['ma', 'tuan', 'san', 'gian', 'loai_tep', 'ten_sp', 'phan_loai', 'ma_don_hang', 'dvvc', 'kho', 'trang_thai',
-    'thoi_gian_tra', 'ghi_chu', 'created_at', 'created_by', 'closed_at', 'updated_at', 'updated_by'],
+    'thoi_gian_tra', 'ghi_chu', 'created_at', 'created_by', 'closed_at', 'updated_at', 'updated_by', 'tuan_key'],
   Closed: ['ma', 'closed_at', 'trang_thai'],
-  Weekly: ['tuan', 'gian', 'total', 'found', 'complained', 'lost'],
+  Weekly: ['tuan', 'gian', 'total', 'found', 'complained', 'lost', 'tuan_key'],
   Log: ['ts', 'user', 'action', 'detail'],
   Config: ['key', 'value']
 };
@@ -158,6 +178,7 @@ var MAX_ROWS = 20000, CACHE_CHUNK = 30000;
 // ---------- Tiện ích ----------
 function err(code, message) { var e = new Error(message); e.code = code; return e; }
 function nowTs() { return Utilities.formatDate(new Date(), TZ, FMT); }
+function todayYmd() { return Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd'); }
 function ss() { return SpreadsheetApp.getActiveSpreadsheet(); }
 function sheet(n) {
   var s = ss().getSheetByName(n);
@@ -368,16 +389,18 @@ function actAdminUpsertUser(user, b) {
 // ---------- Weekly ----------
 function readWeekly() {
   return readRows('Weekly').map(function (r) {
-    return { tuan: String(r[0]), gian: String(r[1]), total: +r[2] || 0, found: +r[3] || 0, complained: +r[4] || 0, lost: +r[5] || 0 };
+    return { tuan: String(r[0]), gian: String(r[1]), total: +r[2] || 0, found: +r[3] || 0, complained: +r[4] || 0, lost: +r[5] || 0, tuan_key: String(r[6]) };
   });
 }
 function applyWeekly(deltas) {
   if (!deltas.length) return;
   writeRows('Weekly', weeklyApply(readWeekly(), deltas).map(function (w) {
-    return [w.tuan, w.gian, w.total, w.found, w.complained, w.lost];
+    return [w.tuan, w.gian, w.total, w.found, w.complained, w.lost, w.tuan_key];
   }));
 }
-function caseKey(r) { return { tuan: String(r[C.tuan]), gian: String(r[C.gian]), trang_thai: String(r[C.trang_thai]) }; }
+function caseKey(r) {
+  return { tuan: String(r[C.tuan]), tuan_key: String(r[C.tuan_key]), gian: String(r[C.gian]), trang_thai: String(r[C.trang_thai]) };
+}
 
 // ---------- Nghiệp vụ ----------
 function codeSet(n) {
@@ -410,8 +433,9 @@ function actIngestKho(user, b) {
 }
 
 function actIngestSan(user, b) {
-  var cfg = getConfig(), tuan = String(b.tuan || ''), gian = findGian(cfg, b.gian), dry = !!b.dry_run;
-  if (!isMonday(tuan)) throw err('BAD_INPUT', 'Tuần phải là ngày Thứ 2 (yyyy-MM-dd)');
+  var cfg = getConfig(), wk = normalizeWeek(b.tuan, todayYmd()), gian = findGian(cfg, b.gian), dry = !!b.dry_run;
+  if (!wk) throw err('BAD_INPUT', WEEK_ERR);
+  var tuan = wk.tuan;
   if (!gian) throw err('NOT_FOUND', 'Không tìm thấy gian: ' + b.gian);
   if (!canEditGian(user, gian.ten)) throw err('FORBIDDEN', 'Bạn không phụ trách gian ' + gian.ten);
   if (!Array.isArray(b.rows)) throw err('BAD_INPUT', 'Thiếu danh sách dòng (rows)');
@@ -432,14 +456,14 @@ function actIngestSan(user, b) {
     else if (kho[r.ma]) res.matchedKho++;
     else {
       add.push([r.ma, tuan, gian.san, gian.ten, r.loai_tep, s(r.ten_sp), s(r.phan_loai), s(r.ma_don_hang), s(r.dvvc), '', 'Mới',
-        '', '', now, user.username, '', now, user.username]);
+        '', '', now, user.username, '', now, user.username, wk.tuan_key]);
     }
   });
   res.created = add.length;
   if (!dry) {
     appendRows('Cases', add);
-    if (add.length) applyWeekly([{ tuan: tuan, gian: gian.ten, field: 'total', delta: add.length }]);
-    logAction(user.username, 'ingest_san', Object.assign({ tuan: tuan, gian: gian.ten }, res));
+    if (add.length) applyWeekly([{ tuan: tuan, tuan_key: wk.tuan_key, gian: gian.ten, field: 'total', delta: add.length }]);
+    logAction(user.username, 'ingest_san', Object.assign({ tuan: tuan, tuan_key: wk.tuan_key, gian: gian.ten }, res));
   }
   res.khoLastUpdate = JSON.parse(PropertiesService.getScriptProperties().getProperty('kho_last') || '{}').lastUpdate || '';
   return res;
@@ -449,7 +473,7 @@ function actIngestSan(user, b) {
 function actUpdateCases(user, b) {
   if (!Array.isArray(b.items) || !b.items.length) throw err('BAD_INPUT', 'Thiếu danh sách items');
   if (b.items.length > MAX_ROWS) throw err('TOO_MANY', 'Tối đa ' + MAX_ROWS + ' dòng mỗi lần');
-  var cfg = getConfig(), rows = readRows('Cases'), idx = {}, now = nowTs(), errors = [], deltas = [], done = [];
+  var cfg = getConfig(), rows = readRows('Cases'), idx = {}, now = nowTs(), today = todayYmd(), errors = [], deltas = [], done = [];
   rows.forEach(function (r, i) { idx[normalizeMa(r[C.ma])] = i; });
   b.items.forEach(function (it) {
     var ma = normalizeMa(it && it.ma), i = idx[ma];
@@ -457,7 +481,7 @@ function actUpdateCases(user, b) {
     if (i == null) return fail('NOT_FOUND', 'Không tìm thấy mã');
     var r = rows[i];
     if (!canEditGian(user, String(r[C.gian]))) return fail('FORBIDDEN', 'Bạn không phụ trách gian ' + r[C.gian]);
-    var v = validateFields(it.fields, cfg.kho_list);
+    var v = validateFields(it.fields, cfg.kho_list, today);
     if (v.error) return fail(v.error.code, v.error.message);
     var from = String(r[C.trang_thai]), to = v.fields.trang_thai != null ? v.fields.trang_thai : from;
     var e = checkTransition(user, from, to);
@@ -516,6 +540,7 @@ function setup() {
   Object.keys(SHEETS).forEach(function (n) {
     var sh = book.getSheetByName(n) || book.insertSheet(n), h = SHEETS[n];
     sh.getRange(1, 1, sh.getMaxRows(), n === 'Weekly' ? 2 : h.length).setNumberFormat('@');
+    if (n === 'Weekly') sh.getRange(1, h.length, sh.getMaxRows(), 1).setNumberFormat('@');
     sh.getRange(1, 1, 1, h.length).setValues([h]).setFontWeight('bold');
     sh.setFrozenRows(1);
   });

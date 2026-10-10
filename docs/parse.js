@@ -175,17 +175,36 @@
     var m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?/.exec(String(s || ''));
     return m ? new Date(+m[1], m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0), +(m[6] || 0)) : null;
   };
-  P.mondayOf = function (d) { var x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - (x.getDay() + 6) % 7); return x; };
-  P.recentWeeks = function (now, n) {
-    var m = P.mondayOf(now), out = [];
-    for (var i = 0; i < n; i++) { var d = new Date(m); d.setDate(m.getDate() - 7 * i); out.push(P.ymd(d)); }
-    return out;
+  P.WEEK_ERR = 'Tuần phải dạng DD/MM - DD/MM, ví dụ 05/10 - 11/10';
+  // Giống backend Lib.gs normalizeWeek.
+  P.normalizeWeek = function (s, todayYmd) {
+    var t = String(s == null ? '' : s).trim(), m = /^(\d{2})(\d{2})(\d{2})(\d{2})$/.exec(t) ||
+      /^(\d{1,2})\s*\/\s*(\d{1,2})\s*[-–—]\s*(\d{1,2})\s*\/\s*(\d{1,2})$/.exec(t);
+    var today = /^(\d{4})-(\d{2})/.exec(String(todayYmd || ''));
+    if (!m || !today) return null;
+    var d1 = +m[1], m1 = +m[2], d2 = +m[3], m2 = +m[4], ny = +today[1], nm = +today[2];
+    var y1 = m1 === 12 && nm === 1 ? ny - 1 : m1 === 1 && nm === 12 ? ny + 1 : ny, y2 = m2 < m1 ? y1 + 1 : y1;
+    var a = Date.UTC(y1, m1 - 1, d1), b = Date.UTC(y2, m2 - 1, d2), ok = function (t, y, mo, d) {
+      var x = new Date(t); return x.getUTCFullYear() === y && x.getUTCMonth() === mo - 1 && x.getUTCDate() === d;
+    };
+    if (!ok(a, y1, m1, d1) || !ok(b, y2, m2, d2)) return null;
+    var diff = (b - a) / 86400000;
+    if (diff < 0 || diff > 13) return null;
+    return { tuan: pad(d1) + '/' + pad(m1) + ' - ' + pad(d2) + '/' + pad(m2), tuan_key: y1 + '-' + pad(m1) + '-' + pad(d1) };
   };
-  P.fmtWeek = function (tuan) {
-    var d = P.parseDate(tuan);
-    if (!d) return String(tuan || '');
-    var e = new Date(d); e.setDate(d.getDate() + 6);
-    return d.getDate() + '/' + (d.getMonth() + 1) + ' - ' + e.getDate() + '/' + (e.getMonth() + 1);
+  // Khi gõ: tự chèn "/" và " - " nếu đang gõ toàn số hoặc trước đó đã đúng khuôn; tự gõ dấu thì để nguyên.
+  function buildWeek(d) {
+    d = d.slice(0, 8);
+    var o = d.slice(0, 2);
+    if (d.length > 2) o += '/' + d.slice(2, 4);
+    if (d.length > 4) o += ' - ' + d.slice(4, 6);
+    if (d.length > 6) o += '/' + d.slice(6, 8);
+    return o;
+  }
+  P.formatWeekTyping = function (v) {
+    var s = String(v || ''), prev = s.slice(0, -1), dg = function (x) { return x.replace(/\D/g, ''); };
+    if (!/\d$/.test(s)) return s;
+    return /^\d+$/.test(s) || prev === buildWeek(dg(prev)) ? buildWeek(dg(s)) : s;
   };
   P.daysOpen = function (created, closed, now) {
     var a = P.parseDate(created), b = closed ? P.parseDate(closed) : now;
