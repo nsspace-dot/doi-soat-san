@@ -3,7 +3,7 @@ var SHEETS = {
   Users: ['username', 'name', 'role', 'gians', 'salt', 'pin_hash', 'active'],
   Kho: ['ma', 'uploaded_at', 'uploaded_by'],
   Cases: ['ma', 'tuan', 'san', 'gian', 'loai_tep', 'ten_sp', 'phan_loai', 'ma_don_hang', 'dvvc', 'kho', 'trang_thai',
-    'thoi_gian_tra', 'ghi_chu', 'created_at', 'created_by', 'closed_at', 'updated_at', 'updated_by', 'tuan_key'],
+    'thoi_gian_tra', 'ghi_chu', 'created_at', 'created_by', 'closed_at', 'updated_at', 'updated_by', 'tuan_key', 'ly_do_tra'],
   Closed: ['ma', 'closed_at', 'trang_thai'],
   Weekly: ['tuan', 'gian', 'total', 'found', 'complained', 'lost', 'tuan_key'],
   Log: ['ts', 'user', 'action', 'detail'],
@@ -73,7 +73,11 @@ function getConfig() {
   readRows('Config').forEach(function (r) {
     var k = String(r[0]).trim(), v = String(r[1]);
     if (k.indexOf('gian:') === 0) {
-      try { var o = JSON.parse(v); gians.push({ ten: k.slice(5).trim(), san: o.san, alias: o.alias || [], owner: o.owner || '' }); } catch (e) { }
+      try {
+        var o = JSON.parse(v), g = { ten: k.slice(5).trim(), san: o.san, alias: o.alias || [], owner: o.owner || '', active: o.active !== false };
+        g.nhom = o.nhom || defaultNhom(g);
+        gians.push(g);
+      } catch (e) { }
     } else if (k) m[k] = v;
   });
   return {
@@ -106,7 +110,12 @@ function buildList() {
   return {
     cases: readRows('Cases').map(function (r) { return toObj('Cases', r); }),
     khoMeta: { lastUpdate: kl.lastUpdate || '', by: kl.by || '', count: Math.max(0, sheet('Kho').getLastRow() - 1) },
-    config: { kho_list: cfg.kho_list, gians: cfg.gians.map(function (g) { return { san: g.san, ten: g.ten, owner: g.owner, owner_name: names[g.owner] || g.owner, alias: g.alias }; }) },
+    config: {
+      kho_list: cfg.kho_list, nhom_list: nhomList(cfg.gians),
+      gians: cfg.gians.map(function (g) {
+        return { san: g.san, ten: g.ten, nhom: g.nhom, owner: g.owner, owner_name: names[g.owner] || g.owner, alias: g.alias, active: g.active };
+      })
+    },
     weekly: readWeekly()
   };
 }
@@ -128,7 +137,8 @@ var ACTIONS = {
   ingest_san: { write: function (b) { return !b.dry_run; }, fn: actIngestSan },
   update_cases: { write: true, fn: actUpdateCases },
   admin_upsert_user: { write: true, fn: actAdminUpsertUser },
-  admin_list_users: { fn: actAdminListUsers }
+  admin_list_users: { fn: actAdminListUsers },
+  admin_upsert_gian: { write: true, fn: actAdminUpsertGian }
 };
 
 function doPost(e) {
@@ -223,6 +233,21 @@ function actChangePin(user, b) {
   return {};
 }
 
+function gianValue(g) { return JSON.stringify({ san: g.san, nhom: g.nhom, alias: g.alias, owner: g.owner, active: g.active }); }
+
+function actAdminUpsertGian(user, b) {
+  if (user.role !== 'admin') throw err('FORBIDDEN', 'Chỉ admin được quản lý gian hàng');
+  var cfg = getConfig(), names = readRows('Users', 1).map(function (r) { return String(r[0]).trim().toLowerCase(); });
+  var v = validateGian(b, cfg.gians, names);
+  if (v.error) throw err(v.error.code, v.error.message);
+  var g = v.gian, key = 'gian:' + g.ten, rows = readRows('Config'), i = -1;
+  rows.forEach(function (r, j) { if (String(r[0]).trim() === key) i = j; });
+  if (i >= 0) sheet('Config').getRange(i + 2, 1, 1, 2).setValues([[key, gianValue(g)]]);
+  else appendRows('Config', [[key, gianValue(g)]]);
+  logAction(user.username, 'admin_upsert_gian', g);
+  return { gian: g, created: v.isNew };
+}
+
 function actAdminListUsers(user) {
   if (user.role !== 'admin') throw err('FORBIDDEN', 'Chỉ admin được quản lý người dùng');
   return { users: readRows('Users').map(parseUser).filter(function (u) { return u.username; })
@@ -288,6 +313,7 @@ function actIngestSan(user, b) {
   var tuan = wk.tuan;
   if (!gian) throw err('NOT_FOUND', 'Không tìm thấy gian: ' + b.gian);
   if (!canEditGian(user, gian.ten)) throw err('FORBIDDEN', 'Bạn không phụ trách gian ' + gian.ten);
+  if (!gian.active) throw err('BAD_INPUT', 'Gian ' + gian.ten + ' đã tắt');
   if (!Array.isArray(b.rows)) throw err('BAD_INPUT', 'Thiếu danh sách dòng (rows)');
   if (b.rows.length > MAX_ROWS) throw err('TOO_MANY', 'Tối đa ' + MAX_ROWS + ' dòng mỗi lần');
   var d = dedupeBy(b.rows.map(function (r) { return Object.assign({}, r, { ma: normalizeMa(r && r.ma) }); }),
@@ -306,7 +332,7 @@ function actIngestSan(user, b) {
     else if (kho[r.ma]) res.matchedKho++;
     else {
       add.push([r.ma, tuan, gian.san, gian.ten, r.loai_tep, s(r.ten_sp), s(r.phan_loai), s(r.ma_don_hang), s(r.dvvc), '', 'Mới',
-        '', '', now, user.username, '', now, user.username, wk.tuan_key]);
+        '', '', now, user.username, '', now, user.username, wk.tuan_key, clipLyDo(r.ly_do_tra)]);
     }
   });
   res.created = add.length;
@@ -394,10 +420,21 @@ function setup() {
     sh.getRange(1, 1, 1, h.length).setValues([h]).setFontWeight('bold');
     sh.setFrozenRows(1);
   });
-  var have = {};
-  readRows('Config').forEach(function (r) { have[String(r[0]).trim()] = 1; });
+  var have = {}, cfgRows = readRows('Config'), fixed = false;
+  cfgRows.forEach(function (r) {
+    var k = String(r[0]).trim();
+    have[k] = 1;
+    if (k.indexOf('gian:') !== 0) return;
+    try {
+      var o = JSON.parse(String(r[1]));
+      if (!o.nhom) { o.nhom = defaultNhom({ owner: o.owner, san: o.san }); fixed = true; }
+      if (o.active == null) { o.active = true; fixed = true; }
+      r[1] = JSON.stringify(o);
+    } catch (e) { }
+  });
+  if (fixed) writeRows('Config', cfgRows);
   var add = DEFAULT_CONFIG.concat(SEED_GIANS.map(function (g) {
-    return ['gian:' + g[1], JSON.stringify({ san: g[0], alias: g[2], owner: g[3] })];
+    return ['gian:' + g[1], gianValue({ san: g[0], nhom: defaultNhom({ owner: g[3], san: g[0] }), alias: g[2], owner: g[3], active: true })];
   })).filter(function (r) { return !have[r[0]]; });
   appendRows('Config', add);
   book.getSheets().forEach(function (sh) {

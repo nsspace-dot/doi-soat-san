@@ -6,7 +6,7 @@
   var ST_CLS = { 'Mới': 's-moi', 'Chưa về kho': 's-chuave', 'Chưa tìm thấy': 's-chuatim', 'Đã tìm thấy': 's-datim', 'Đã khiếu nại': 's-khieunai', 'Xác nhận mất': 's-mat' };
   var KHO_CLS = { TSN: 'k-tsn', NVS: 'k-nvs', VL: 'k-vl' };
   var PAGE = 50, CHUNK = 20000, CONFIRM_CLOSE = 'Chi tiết đơn sẽ bị xóa sau 14 ngày. Tiếp tục?';
-  var S = { data: null, token: '', user: null, page: 1, sel: {}, rowErr: {}, loadedAt: 0, kho: null, san: [] };
+  var S = { data: null, token: '', user: null, page: 1, sel: {}, rowErr: {}, loadedAt: 0, kho: null, san: [], impManual: {}, impOverride: {} };
 
   var $ = function (id) { return document.getElementById(id); };
   function esc(v) {
@@ -61,9 +61,25 @@
     render();
   }
   function canEdit(c) { return !!S.user && (S.user.role === 'admin' || (S.user.gians || []).indexOf(c.gian) >= 0); }
+  // Gian user được thao tác, chỉ gian đang bật (dùng cho ô chọn khi tải file / nhập).
   function myGians() {
-    var g = (S.data && S.data.config.gians) || [];
+    var g = ((S.data && S.data.config.gians) || []).filter(function (x) { return x.active !== false; });
     return S.user && S.user.role === 'admin' ? g : g.filter(function (x) { return (S.user ? S.user.gians : []).indexOf(x.ten) >= 0; });
+  }
+  function nhomList() { return (S.data && S.data.config.nhom_list) || []; }
+  function gianMap() {
+    var m = {};
+    ((S.data && S.data.config.gians) || []).forEach(function (g) { m[g.ten] = g; });
+    return m;
+  }
+  function nhomOf(ten) { var g = gianMap()[ten]; return g ? g.nhom || g.san : ''; }
+  // Ô chọn gian chia optgroup theo nhóm.
+  function gianSelect(gians, cur, blank, attrs) {
+    var groups = nhomList().concat(gians.map(function (g) { return g.nhom; }).filter(function (n, i, a) { return n && nhomList().indexOf(n) < 0 && a.indexOf(n) === i; }));
+    return '<select ' + (attrs || '') + '>' + (blank != null ? '<option value="">' + esc(blank) + '</option>' : '') + groups.map(function (n) {
+      var gs = gians.filter(function (g) { return g.nhom === n; });
+      return gs.length ? '<optgroup label="' + esc(n) + '">' + opts(gs.map(function (g) { return g.ten; }), cur) + '</optgroup>' : '';
+    }).join('') + '</select>';
   }
 
   // ---------- Danh sách ----------
@@ -80,8 +96,8 @@
     var d = S.data, cs = d.cases, keep = function (id) { return $(id).value; };
     var uniq = function (f) { return cs.map(f).filter(function (v, i, a) { return v && a.indexOf(v) === i; }).sort(); };
     var san = keep('fSan');
-    $('fSan').innerHTML = opts(uniq(function (c) { return c.san; }), san, 'Tất cả');
-    var gians = d.config.gians.filter(function (g) { return !san || g.san === san; }).map(function (g) { return g.ten; });
+    $('fSan').innerHTML = opts(nhomList(), san, 'Tất cả');
+    var gians = d.config.gians.filter(function (g) { return !san || g.nhom === san; }).map(function (g) { return g.ten; });
     $('fGian').innerHTML = opts(gians, keep('fGian'), 'Tất cả');
     $('fKho').innerHTML = opts(d.config.kho_list.concat([{ v: '-', t: '(Trống)' }]), keep('fKho'), 'Tất cả');
     var wk = {};
@@ -106,12 +122,13 @@
 
   function filtered() {
     var f = { san: $('fSan').value, gian: $('fGian').value, kho: $('fKho').value, tuan: $('fTuan').value, tt: $('fTt').value, owner: $('fOwner').value, closed: $('fClosed').checked };
-    var own = owners();
+    var own = owners(), nm = {};
+    S.data.config.gians.forEach(function (g) { nm[g.ten] = g.nhom; });
     var codes = P.splitCodes($('fMa').value), set = {};
     codes.forEach(function (c) { set[c] = 1; });
     return S.data.cases.filter(function (c) {
       if (!f.closed && isClosed(c) && f.tt !== c.trang_thai) return false;
-      if (f.san && c.san !== f.san) return false;
+      if (f.san && nm[c.gian] !== f.san) return false;
       if (f.gian && c.gian !== f.gian) return false;
       if (f.kho && (f.kho === '-' ? c.kho : c.kho !== f.kho)) return false;
       if (f.tuan && c.tuan_key !== f.tuan) return false;
@@ -123,7 +140,7 @@
     }).sort(function (a, b) { return String(b.tuan_key || '').localeCompare(String(a.tuan_key || '')) || String(a.created_at).localeCompare(String(b.created_at)); });
   }
 
-  var COLS = ['Tuần', 'Sàn', 'Gian', 'Mã vận đơn', 'Loại tệp', 'Tên sản phẩm', 'Phân loại', 'Mã đơn hàng', 'ĐVVC', 'KHO',
+  var COLS = ['Tuần', 'Sàn', 'Gian', 'Mã vận đơn', 'Loại tệp', 'Lý do trả', 'Tên sản phẩm', 'Phân loại', 'Mã đơn hàng', 'ĐVVC', 'KHO',
     'Thời gian trả trên hệ thống', 'Trạng thái', 'Ghi chú', 'Phụ trách', 'Số ngày tồn'];
 
   function render() {
@@ -144,26 +161,27 @@
       COLS.map(function (h) { return '<th>' + esc(h) + '</th>'; }).join('') + '</tr>';
     $('tbl').tBodies[0].innerHTML = view.map(function (c) {
       var ed = canEdit(c), d = days(c), ma = esc(c.ma), cls = (isClosed(c) ? 'closed' : '') + (S.rowErr[c.ma] ? ' rowerr' : '');
-      var kho, tt, note, tg, tuan;
+      var kho, tt, note, tg, tuan, lydo;
       if (ed) {
         kho = '<select data-ma="' + ma + '" data-f="kho" class="' + (KHO_CLS[c.kho] || '') + '">' + opts(S.data.config.kho_list, c.kho, '') + '</select>';
         var stList = isClosed(c) && S.user.role !== 'admin' ? ST_CLOSED : ST_ALL;
         tt = '<select data-ma="' + ma + '" data-f="trang_thai" class="' + (ST_CLS[c.trang_thai] || '') + '">' + opts(stList, c.trang_thai) + '</select>';
         note = '<input class="note" data-ma="' + ma + '" data-f="ghi_chu" value="' + esc(c.ghi_chu) + '">';
+        lydo = '<input class="note" maxlength="300" data-ma="' + ma + '" data-f="ly_do_tra" value="' + esc(c.ly_do_tra) + '">';
         tg = '<input class="tg" data-ma="' + ma + '" data-f="thoi_gian_tra" value="' + esc(c.thoi_gian_tra) + '">';
         tuan = wkHtml('data-ma="' + ma + '" data-f="tuan"', c.tuan);
       } else {
         kho = c.kho ? '<span class="badge ' + (KHO_CLS[c.kho] || '') + '">' + esc(c.kho) + '</span>' : '';
         tt = '<span class="badge ' + (ST_CLS[c.trang_thai] || '') + '">' + esc(c.trang_thai) + '</span>';
-        note = esc(c.ghi_chu); tg = esc(c.thoi_gian_tra); tuan = esc(c.tuan);
+        note = esc(c.ghi_chu); tg = esc(c.thoi_gian_tra); tuan = esc(c.tuan); lydo = esc(c.ly_do_tra);
       }
       return '<tr class="' + cls + '"' + (S.rowErr[c.ma] ? ' title="' + esc(S.rowErr[c.ma]) + '"' : '') + '>' +
         (auth ? '<td>' + (ed ? '<input type="checkbox" data-sel="' + ma + '"' + (S.sel[c.ma] ? ' checked' : '') + '>' : '') + '</td>' : '') +
-        '<td>' + tuan + '</td><td>' + esc(c.san) + '</td><td>' + esc(c.gian) + '</td><td class="ma">' + ma + '</td><td>' + esc(c.loai_tep) +
+        '<td>' + tuan + '</td><td>' + esc(nhomOf(c.gian) || c.san) + '</td><td>' + esc(c.gian) + '</td><td class="ma">' + ma + '</td><td>' + esc(c.loai_tep) + '</td><td class="sp">' + lydo +
         '</td><td class="sp">' + esc(c.ten_sp) + '</td><td>' + esc(c.phan_loai) + '</td><td class="ma">' + esc(c.ma_don_hang) + '</td><td>' + esc(c.dvvc) +
         '</td><td>' + kho + '</td><td>' + tg + '</td><td>' + tt + '</td><td>' + note + '</td><td>' + esc(own[c.gian] || '') +
         '</td><td class="' + (d !== '' && d >= 7 ? 'ton7' : '') + '">' + esc(d) + '</td></tr>';
-    }).join('') || '<tr><td colspan="16" class="muted">Không có đơn nào</td></tr>';
+    }).join('') || '<tr><td colspan="17" class="muted">Không có đơn nào</td></tr>';
     renderBulk();
   }
 
@@ -279,7 +297,7 @@
       readAoa(f).then(P.parseSan, function () { return { error: 'Không đọc được file' }; }).then(function (r) {
         item.r = r;
         if (!r.error) {
-          var g = P.matchGian(f.name, myGians());
+          var g = P.matchGian(f.name, myGians().filter(function (x) { return x.san === r.san; }));
           item.gian = g ? g.ten : '';
         }
         renderSanItem(item);
@@ -290,13 +308,14 @@
   function renderSanItem(it) {
     var div = $(it.id), r = it.r;
     if (r.error) { div.innerHTML = '<b>' + esc(it.f.name) + '</b><div class="err">' + esc(r.error) + ' — file không được ghi.</div>'; return; }
-    var gians = myGians(), g = gians.filter(function (x) { return x.ten === it.gian; })[0];
+    var gians = myGians().filter(function (x) { return x.san === r.san; }), g = gians.filter(function (x) { return x.ten === it.gian; })[0];
     var mismatch = g && g.san !== r.san, skip = r.skipped.noMa + r.skipped.badMa;
     var ready = g && it.wk && !mismatch && r.rows.length && !it.done && !it.busy;
     div.innerHTML = '<b>' + esc(it.f.name) + '</b>' +
       '<div>Nhận diện: <b>' + esc(r.san) + ' — ' + esc(r.loai_tep) + '</b>. ' + r.total + ' dòng, ' + r.rows.length + ' dòng có mã.' +
       (skip ? ' <span class="warn">Bỏ ' + skip + ' dòng: ' + [r.skipped.noMa ? r.skipped.noMa + ' không có mã vận đơn' : '', r.skipped.badMa ? r.skipped.badMa + ' mã không hợp lệ (có khoảng trắng/quá ngắn)' : ''].filter(Boolean).join(', ') + '</span>' : '') + '</div>' +
-      '<div class="row"><label>Gian <select data-k="gian">' + opts(gians.map(function (x) { return { v: x.ten, t: x.ten }; }), it.gian, '— Chọn gian —') + '</select></label>' +
+      '<div class="row"><label>Gian ' + gianSelect(gians, it.gian, '— Chọn gian ' + r.san + ' —', 'data-k="gian"') + '</label>' +
+      (gians.length ? '' : '<span class="err">Bạn không có gian ' + esc(r.san) + ' nào đang bật.</span>') +
       '<label>Tuần ' + wkHtml('data-k="tuan"', it.tuan) + '</label>' +
       '<button data-a="preview"' + (ready ? '' : ' disabled') + '>Xem trước</button>' +
       '<button data-a="save" class="primary"' + (ready ? '' : ' disabled') + '>Ghi</button></div>' +
@@ -334,7 +353,10 @@
 
   function showView(v) {
     $('listView').hidden = v !== 'list'; $('uploadView').hidden = v !== 'upload'; $('staffView').hidden = v !== 'staff';
+    $('gianView').hidden = v !== 'gian'; $('importView').hidden = v !== 'import';
     if (v === 'staff') loadStaff();
+    if (v === 'gian') loadGian();
+    if (v === 'import') { S.imp = null; $('impInfo').innerHTML = ''; $('impPreview').innerHTML = ''; $('impResult').innerHTML = ''; $('impRun').disabled = true; }
     if (v === 'list') { $('khoFiles').value = ''; $('sanFiles').value = ''; $('khoInfo').innerHTML = ''; $('khoResult').innerHTML = ''; $('sanList').innerHTML = ''; $('khoSave').disabled = true; }
   }
 
@@ -370,6 +392,140 @@
     }).catch(function (x) { b.disabled = false; msg(errText(x), 'err'); });
   }
 
+  // ---------- Gian hàng (admin) ----------
+  function nhomOpts(cur) {
+    return opts(nhomList(), cur) + '<option value="__new">Nhóm mới...</option>';
+  }
+  function loadGian() {
+    var tb = $('tblGian').tBodies[0];
+    tb.innerHTML = '<tr><td colspan="6">Đang tải...</td></tr>';
+    api('admin_list_users').then(function (j) {
+      S.users = j.users;
+      var uo = function (cur) { return opts(j.users.map(function (u) { return { v: u.username, t: u.name + ' (' + u.username + ')' }; }), cur); };
+      $('gNhom').innerHTML = nhomOpts('Shopee'); $('gOwner').innerHTML = uo('');
+      var gs = S.data.config.gians.slice().sort(function (a, b) { return nhomList().indexOf(a.nhom) - nhomList().indexOf(b.nhom) || a.ten.localeCompare(b.ten, 'vi'); });
+      tb.innerHTML = gs.map(function (g) {
+        var t = esc(g.ten), on = g.active !== false;
+        return '<tr class="' + (on ? '' : 'closed') + '"><td>' + t + '</td><td>' + esc(g.san) + '</td>' +
+          '<td><select data-g="' + t + '" data-k="nhom">' + nhomOpts(g.nhom) + '</select></td>' +
+          '<td><select data-g="' + t + '" data-k="owner">' + uo(g.owner) + '</select></td>' +
+          '<td><input class="note" data-g="' + t + '" data-k="alias" value="' + esc((g.alias || []).join(', ')) + '"></td>' +
+          '<td><button data-g="' + t + '" data-k="active">' + (on ? 'Đang bật — Tắt' : 'Đã tắt — Bật') + '</button></td></tr>';
+      }).join('');
+    }).catch(function (e) { tb.innerHTML = '<tr><td colspan="6" class="err">' + esc(errText(e)) + '</td></tr>'; });
+  }
+  function upsertGian(body) {
+    msg('Đang lưu gian...', 'info');
+    return api('admin_upsert_gian', body).then(function (j) {
+      msg((j.created ? 'Đã thêm gian ' : 'Đã lưu gian ') + j.gian.ten, 'ok');
+      return refresh(true).then(function () { if (!$('gianView').hidden) loadGian(); });
+    }).catch(function (e) { msg(errText(e), 'err'); loadGian(); });
+  }
+  function onGianEdit(e) {
+    var t = e.target, ten = t.dataset && t.dataset.g, k = t.dataset && t.dataset.k;
+    if (!ten || !k || (k === 'active') !== (e.type === 'click')) return;
+    var g = gianMap()[ten], body = { ten: ten };
+    if (k === 'nhom') {
+      var n = t.value;
+      if (n === '__new') { n = (prompt('Tên nhóm mới cho ' + ten + ':') || '').trim(); if (!n) return loadGian(); }
+      body.nhom = n;
+    } else if (k === 'owner') body.owner = t.value;
+    else if (k === 'alias') body.alias = t.value.split(',');
+    else { body.active = g.active === false; if (!confirm((body.active ? 'Bật' : 'Tắt') + ' gian ' + ten + '?')) return; }
+    upsertGian(body);
+  }
+  function addGian(e) {
+    e.preventDefault();
+    var f = e.target, nhom = f.nhom.value === '__new' ? f.nhom_new.value.trim() : f.nhom.value;
+    if (!nhom) return msg('Hãy nhập tên nhóm mới', 'err');
+    upsertGian({ ten: f.ten.value.trim(), san: f.san.value, nhom: nhom, owner: f.owner.value, alias: f.alias.value.split(','), active: true })
+      .then(function () { f.reset(); $('gNhomNewBox').hidden = true; });
+  }
+
+  // ---------- Nhập từ Sheet cũ ----------
+  function parseImport() {
+    var text = $('impText').value;
+    $('impResult').innerHTML = '';
+    if (!text.trim()) { $('impInfo').innerHTML = '<p class="err">Chưa dán dữ liệu.</p>'; return; }
+    var gians = myGians(), r = P.parseOldSheet(P.parseTsv(text), { defaultSan: $('impSan').value, gians: gians, kho_list: S.data.config.kho_list, today: P.ymd(new Date()), manual: S.impManual });
+    if (r.error) { $('impInfo').innerHTML = '<p class="err">' + esc(r.error) + '</p>'; $('impPreview').innerHTML = ''; $('impRun').disabled = true; return; }
+    r.rows.forEach(function (row, i) { if (S.impOverride[row.ma]) { row.loai_tep = S.impOverride[row.ma]; row.inferred = false; } });
+    S.imp = r;
+    var ok = r.rows.filter(function (x) { return !x.error; }).length, warns = [];
+    if (r.inferred) warns.push('Không có cột Loại tệp: đã suy ra loại từ Lý do trả cho ' + r.inferred + ' dòng (đổi được ở bảng dưới).');
+    if (r.odd) warns.push(r.odd + ' dòng có trạng thái lạ → đặt "Mới" và ghi vào Ghi chú "Sheet cũ: ...".');
+    if (r.badKho) warns.push(r.badKho + ' dòng có KHO không nhận ra → để trống.');
+    if (r.noKho) warns.push(r.noKho + ' dòng (ngoài nhóm Newtea) chưa có KHO.');
+    if (r.dup) warns.push(r.dup + ' dòng trùng mã trong dữ liệu dán → bỏ.');
+    var um = Object.keys(r.unmatched);
+    $('impInfo').innerHTML = '<p><b>' + r.rows.length + ' dòng có mã: ' + ok + ' hợp lệ, ' + r.errors + ' lỗi; bỏ qua ' + r.noMa + ' dòng không có mã vận đơn.</b></p>' +
+      warns.map(function (w) { return '<div class="warn">' + esc(w) + '</div>'; }).join('') +
+      (um.length ? '<div class="box"><b>Gian chưa khớp — chọn gian cho từng tên (áp dụng mọi dòng cùng tên):</b>' + um.map(function (n) {
+        return '<div class="row">"' + esc(n || '(trống)') + '" (' + r.unmatched[n] + ' dòng) → ' + gianSelect(gians, S.impManual[n] || '', '— Chọn gian —', 'data-um="' + esc(n) + '"') + '</div>';
+      }).join('') + '</div>' : '');
+    var show = r.rows.slice(0, 300);
+    $('impPreview').innerHTML = '<div class="tableWrap"><table><thead><tr><th>Dòng</th><th>Tuần</th><th>Mã vận đơn</th><th>Gian (gốc → khớp)</th><th>Loại tệp</th><th>Lý do trả</th><th>Phân loại</th><th>KHO</th><th>Trạng thái</th><th>Ghi chú</th><th>Lỗi</th></tr></thead><tbody>' +
+      show.map(function (x) {
+        return '<tr class="' + (x.error ? 'rowerr' : '') + '"><td>' + x.line + '</td><td>' + esc(x.tuan || x.tuan_raw) + '</td><td class="ma">' + esc(x.ma) + '</td><td>' + esc(x.gianRaw) + ' → ' + esc(x.gian || '?') +
+          '</td><td><select data-loai="' + esc(x.ma) + '"' + (x.inferred ? ' class="s-chuave"' : '') + '>' + opts(['Trả hàng', 'Giao không thành công'], x.loai_tep) + '</select></td><td class="sp">' + esc(x.ly_do_tra) +
+          '</td><td>' + esc(x.phan_loai) + '</td><td>' + esc(x.kho) + '</td><td><span class="badge ' + (ST_CLS[x.trang_thai] || '') + '">' + esc(x.trang_thai) + '</span></td><td>' + esc(x.ghi_chu) + '</td><td class="err">' + esc(x.error || '') + '</td></tr>';
+      }).join('') + '</tbody></table></div>' + (r.rows.length > show.length ? '<p class="muted">Chỉ hiện ' + show.length + '/' + r.rows.length + ' dòng đầu.</p>' : '');
+    $('impRun').disabled = !ok;
+  }
+  function onImpChange(e) {
+    var t = e.target;
+    if (t.dataset.loai) { S.impOverride[t.dataset.loai] = t.value; t.classList.remove('s-chuave'); }
+    else if (t.dataset.um != null) {
+      if (t.value) S.impManual[t.dataset.um] = t.value; else delete S.impManual[t.dataset.um];
+      parseImport();
+    }
+  }
+  function runImport() {
+    var rows = (S.imp ? S.imp.rows : []).filter(function (x) { return !x.error; }), skipped = S.imp.errors + S.imp.noMa + S.imp.dup;
+    var groups = {}, keys = [], sum = { created: 0, existed: 0, kho: 0 }, upErr = [];
+    rows.forEach(function (x) {
+      var k = x.gian + '|' + x.tuan + '|' + x.loai_tep;
+      if (!groups[k]) { groups[k] = []; keys.push(k); }
+      groups[k].push(x);
+    });
+    $('impRun').disabled = true;
+    var step = function (i) {
+      if (i >= keys.length) return Promise.resolve();
+      var g = groups[keys[i]], p = keys[i].split('|');
+      $('impResult').textContent = 'Đang nhập nhóm ' + (i + 1) + '/' + keys.length + ' (' + p[0] + ', ' + p[1] + ', ' + p[2] + ')...';
+      return api('ingest_san', { gian: p[0], tuan: p[1], dry_run: false, rows: g.map(function (x) {
+        return { ma: x.ma, loai_tep: x.loai_tep, ten_sp: x.ten_sp, phan_loai: x.phan_loai, ma_don_hang: x.ma_don_hang, dvvc: x.dvvc, ly_do_tra: x.ly_do_tra };
+      }) }).then(function (j) { sum.created += j.created; sum.existed += j.existedCase + j.existedClosed; sum.kho += j.matchedKho; return step(i + 1); });
+    };
+    step(0).then(function () { return refresh(true); }).then(function () {
+      var cur = {};
+      S.data.cases.forEach(function (c) { cur[c.ma] = c; });
+      var items = rows.filter(function (x) { return cur[x.ma]; }).map(function (x) {
+        var c = cur[x.ma], f = {};
+        if (x.kho && x.kho !== c.kho) f.kho = x.kho;
+        if (x.trang_thai !== 'Mới' && x.trang_thai !== c.trang_thai) f.trang_thai = x.trang_thai;
+        if (x.thoi_gian_tra && x.thoi_gian_tra !== c.thoi_gian_tra) f.thoi_gian_tra = x.thoi_gian_tra;
+        if (x.ghi_chu && x.ghi_chu !== c.ghi_chu) f.ghi_chu = x.ghi_chu;
+        if (x.ly_do_tra && x.ly_do_tra !== c.ly_do_tra) f.ly_do_tra = x.ly_do_tra;
+        return { ma: x.ma, fields: f };
+      }).filter(function (it) { return Object.keys(it.fields).length; });
+      var up = function (i) {
+        if (i >= items.length) return Promise.resolve();
+        $('impResult').textContent = 'Đang cập nhật KHO/trạng thái/ghi chú ' + Math.min(i + 1000, items.length) + '/' + items.length + '...';
+        return api('update_cases', { items: items.slice(i, i + 1000) }).then(function (j) { upErr = upErr.concat(j.errors || []); return up(i + 1000); });
+      };
+      return up(0).then(function () { return items.length; });
+    }).then(function (nUp) {
+      $('impResult').innerHTML = '<p class="okc"><b>Xong: đã nhập ' + sum.created + ' đơn mới, ' + sum.existed + ' đơn đã có sẵn, ' + sum.kho + ' mã đã có trong kho (không tạo đơn), bỏ qua ' + skipped + ' dòng.</b> Cập nhật thêm ' + nUp + ' đơn.</p>' +
+        (upErr.length ? '<div class="err">Lỗi cập nhật ' + upErr.length + ' đơn:<br>' + upErr.slice(0, 50).map(function (x) { return esc(x.ma + ': ' + x.message); }).join('<br>') + '</div>' : '') +
+        (S.imp.errors ? '<div class="warn">Dòng bị bỏ qua do lỗi: ' + S.imp.rows.filter(function (x) { return x.error; }).slice(0, 50).map(function (x) { return 'dòng ' + x.line + ' (' + esc(x.ma) + '): ' + esc(x.error); }).join('; ') + '</div>' : '');
+      msg('Đã nhập từ Sheet cũ', 'ok');
+    }).catch(function (e) {
+      $('impResult').innerHTML = '<p class="err">Lỗi: ' + esc(errText(e)) + ' (đã nhập ' + sum.created + ' đơn trước khi lỗi; nhập lại an toàn)</p>';
+      $('impRun').disabled = false;
+    });
+  }
+
   // ---------- Sự kiện ----------
   function bind() {
     $('btnRefresh').onclick = function () { refresh(); };
@@ -379,6 +535,16 @@
     $('btnUpload').onclick = function () { showView('upload'); };
     $('btnBack').onclick = function () { showView('list'); };
     $('btnStaff').onclick = function () { showView('staff'); };
+    $('btnGian').onclick = function () { showView('gian'); };
+    $('btnImport').onclick = function () { showView('import'); };
+    document.querySelectorAll('[data-back]').forEach(function (b) { b.onclick = function () { showView('list'); }; });
+    $('tblGian').addEventListener('change', onGianEdit);
+    $('tblGian').addEventListener('click', onGianEdit);
+    $('gNhom').onchange = function () { $('gNhomNewBox').hidden = $('gNhom').value !== '__new'; };
+    $('formGian').onsubmit = addGian;
+    $('impParse').onclick = function () { S.impManual = {}; S.impOverride = {}; parseImport(); };
+    $('impRun').onclick = runImport;
+    $('importView').addEventListener('change', onImpChange);
     $('btnBack2').onclick = function () { showView('list'); };
     $('tblStaff').addEventListener('click', onStaffClick);
     document.querySelectorAll('[data-close]').forEach(function (b) { b.onclick = function () { b.closest('dialog').close(); }; });

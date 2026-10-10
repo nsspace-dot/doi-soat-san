@@ -9,7 +9,7 @@ const tt = [
 ];
 const r1 = P.parseSan(tt);
 assert.deepStrictEqual([r1.san, r1.loai_tep, r1.total, r1.rows.length, r1.skipped.noMa, r1.skipped.badMa], ['TikTok', 'Trả hàng', 3, 1, 1, 1]);
-assert.deepStrictEqual(r1.rows[0], { ma: '852123456789012345', loai_tep: 'Trả hàng', ten_sp: 'Lịch 2027', phan_loai: 'Đỏ', ma_don_hang: '580001', dvvc: 'J&T' });
+assert.deepStrictEqual(r1.rows[0], { ma: '852123456789012345', loai_tep: 'Trả hàng', ten_sp: 'Lịch 2027', phan_loai: 'Đỏ', ma_don_hang: '580001', dvvc: 'J&T', ly_do_tra: '' });
 
 const sp = [
   ['Báo cáo trả hàng'], [],
@@ -30,4 +30,17 @@ assert.strictEqual(P.cellToStr({ t: 's', v: '8.52123456789012E+14' }), '85212345
 assert.ok(P.parseSan([['Tên'], ['x']]).error);
 assert.deepStrictEqual([P.formatWeekTyping('05101110'), P.formatWeekTyping('051'), P.formatWeekTyping('5/10-1')], ['05/10 - 11/10', '05/1', '5/10-1']);
 assert.deepStrictEqual([P.normalizeWeek('5/10 – 11/10', '2026-10-10').tuan, P.normalizeWeek('31/02 - 06/03', '2026-10-10')], ['05/10 - 11/10', null]);
+
+// Nhập từ Sheet cũ
+const GI = [['Shopee', 'Shopee Newshop CN1', 'Shopee'], ['Shopee', 'Shopee Newshop', 'Shopee'], ['TikTok', 'TikTok NewteaVN', 'Newtea'], ['Shopee', 'Shopee NewteaHCM', 'Newtea']]
+  .map(([san, ten, nhom]) => ({ san, ten, nhom, alias: [] }));
+assert.strictEqual(P.normalizeOldWeek('Ngày 31.8 - 6.9', '2026-10-10').tuan, '31/08 - 06/09');
+const tsv = 'Tuần/Ngày đối soát\tMã vận đơn\tGian hàng\tLý do trả\tPhân loại\tKHO\tTrạng thái\n' +
+  'Ngày 31.8 - 6.9\tVN111\tTIKTOK NewteaVN\tKhách hàng đã từ chối nhận kiện hàng.\t"Đỏ\n"\t53/8\tĐã nhận kho\n' +
+  '\tVN222\tNS CN1\t"Hỏng\tvỡ"\tXanh\t\t\nTỔNG ĐƠN TRẢ\t\t\t\t\t\t\n';
+const o = P.parseOldSheet(P.parseTsv(tsv), { defaultSan: 'Shopee', gians: GI, kho_list: ['NVS', 'TSN', 'VL'], today: '2026-10-10' });
+const [a, b] = o.rows;
+assert.deepStrictEqual([a.gian, a.loai_tep, a.trang_thai, a.phan_loai, a.kho, a.tuan], ['TikTok NewteaVN', 'Giao không thành công', 'Đã tìm thấy', 'Đỏ', 'VL', '31/08 - 06/09']);
+assert.deepStrictEqual([b.gian, b.ly_do_tra, b.tuan, b.loai_tep, o.noMa, o.inferred], ['Shopee Newshop CN1', 'Hỏng\tvỡ', '31/08 - 06/09', 'Trả hàng', 1, 2]);
+assert.strictEqual(P.resolveGian('TIKTOK NewteaVN', 'Shopee', GI).san, 'TikTok');
 console.log('OK: parse test qua');

@@ -6,10 +6,48 @@ var CLOSED_STATES = ['Đã tìm thấy', 'Đã khiếu nại', 'Xác nhận mấ
 var LOAI_TEP = ['Trả hàng', 'Giao không thành công'];
 var COUNTER_BY_STATE = { 'Đã tìm thấy': 'found', 'Đã khiếu nại': 'complained', 'Xác nhận mất': 'lost' };
 var WEEKLY_FIELDS = ['total', 'found', 'complained', 'lost'];
-var EDITABLE_FIELDS = ['kho', 'trang_thai', 'ghi_chu', 'thoi_gian_tra', 'tuan'];
+var EDITABLE_FIELDS = ['kho', 'trang_thai', 'ghi_chu', 'thoi_gian_tra', 'tuan', 'ly_do_tra'];
+var SAN_LIST = ['Shopee', 'TikTok', 'Khác'];
+var NHOM_ORDER = ['Shopee', 'TikTok', 'Newtea'];
+var LY_DO_MAX = 300, GIAN_MAX = 60;
+
+function clipLyDo(v) { return v == null ? '' : String(v).trim().slice(0, LY_DO_MAX); }
+
+// Nhóm mặc định cho gian chưa có nhom: gian của "tam" là Newtea, còn lại theo nền tảng.
+function defaultNhom(g) { return g.owner === 'tam' ? 'Newtea' : g.san; }
+
+function nhomList(gians) {
+  var u = [];
+  gians.forEach(function (g) { if (g.nhom && u.indexOf(g.nhom) < 0) u.push(g.nhom); });
+  return NHOM_ORDER.filter(function (n) { return u.indexOf(n) >= 0; })
+    .concat(u.filter(function (n) { return NHOM_ORDER.indexOf(n) < 0; }).sort(function (a, b) { return a.localeCompare(b, 'vi'); }));
+}
+
+// Kiểm tra dữ liệu thêm/sửa gian. Trả {gian, isNew} hoặc {error}.
+function validateGian(inp, gians, usernames) {
+  var e = function (m) { return { error: { code: 'BAD_INPUT', message: m } }; };
+  var ten = String(inp.ten || '').trim().replace(/\s+/g, ' ');
+  if (!ten) return e('Tên gian không được rỗng');
+  if (ten.length > GIAN_MAX) return e('Tên gian tối đa ' + GIAN_MAX + ' ký tự');
+  var cur = gians.filter(function (g) { return g.ten === ten; })[0];
+  if (!cur && gians.some(function (g) { return foldText(g.ten) === foldText(ten); })) return e('Tên gian đã tồn tại: ' + ten);
+  var san = inp.san != null ? String(inp.san) : (cur ? cur.san : '');
+  if (SAN_LIST.indexOf(san) < 0) return e('Nền tảng phải là Shopee, TikTok hoặc Khác');
+  var nhom = String(inp.nhom != null ? inp.nhom : (cur ? cur.nhom : san)).trim().replace(/\s+/g, ' ');
+  if (!nhom || nhom.length > GIAN_MAX) return e('Tên nhóm không hợp lệ');
+  var same = gians.filter(function (g) { return g.nhom && foldText(g.nhom) === foldText(nhom); })[0];
+  if (same) nhom = same.nhom;
+  var owner = String(inp.owner != null ? inp.owner : (cur ? cur.owner : '')).trim().toLowerCase();
+  if (usernames.indexOf(owner) < 0) return e('Người phụ trách không tồn tại: ' + owner);
+  var alias = inp.alias != null ? inp.alias : (cur ? cur.alias : []);
+  if (!Array.isArray(alias)) alias = String(alias).split(',');
+  alias = alias.map(function (a) { return String(a).trim(); }).filter(String);
+  var active = inp.active != null ? !!inp.active : (cur ? cur.active !== false : true);
+  return { gian: { ten: ten, san: san, nhom: nhom, owner: owner, alias: alias, active: active }, isNew: !cur };
+}
 
 function normalizeMa(v) {
-  return v == null ? '' : String(v).replace(/[\s​﻿]+/g, '').toUpperCase();
+  return v == null ? '' : String(v).replace(/[\s\u200b\ufeff]+/g, '').toUpperCase();
 }
 
 function dedupeBy(items, keyFn) {
@@ -48,6 +86,7 @@ function validateFields(fields, khoList, todayYmd) {
     if (EDITABLE_FIELDS.indexOf(k) < 0) return { error: { code: 'BAD_FIELD', message: 'Không được sửa cột ' + k } };
     if (k === 'kho' && v && khoList.indexOf(v) < 0) return { error: { code: 'BAD_INPUT', message: 'Kho không hợp lệ: ' + v } };
     if (k === 'trang_thai' && !isValidState(v)) return { error: { code: 'BAD_INPUT', message: 'Trạng thái không hợp lệ: ' + v } };
+    if (k === 'ly_do_tra') { out[k] = clipLyDo(v); continue; }
     if (k === 'tuan') {
       var w = normalizeWeek(v, todayYmd);
       if (!w) return { error: { code: 'BAD_INPUT', message: WEEK_ERR } };
@@ -124,7 +163,7 @@ function normalizeWeek(s, todayYmd) {
 }
 
 function foldText(s) {
-  return ' ' + String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[đĐ]/g, 'D')
+  return ' ' + String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'D')
     .toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim() + ' ';
 }
 
@@ -153,7 +192,7 @@ var SHEETS = {
   Users: ['username', 'name', 'role', 'gians', 'salt', 'pin_hash', 'active'],
   Kho: ['ma', 'uploaded_at', 'uploaded_by'],
   Cases: ['ma', 'tuan', 'san', 'gian', 'loai_tep', 'ten_sp', 'phan_loai', 'ma_don_hang', 'dvvc', 'kho', 'trang_thai',
-    'thoi_gian_tra', 'ghi_chu', 'created_at', 'created_by', 'closed_at', 'updated_at', 'updated_by', 'tuan_key'],
+    'thoi_gian_tra', 'ghi_chu', 'created_at', 'created_by', 'closed_at', 'updated_at', 'updated_by', 'tuan_key', 'ly_do_tra'],
   Closed: ['ma', 'closed_at', 'trang_thai'],
   Weekly: ['tuan', 'gian', 'total', 'found', 'complained', 'lost', 'tuan_key'],
   Log: ['ts', 'user', 'action', 'detail'],
@@ -223,7 +262,11 @@ function getConfig() {
   readRows('Config').forEach(function (r) {
     var k = String(r[0]).trim(), v = String(r[1]);
     if (k.indexOf('gian:') === 0) {
-      try { var o = JSON.parse(v); gians.push({ ten: k.slice(5).trim(), san: o.san, alias: o.alias || [], owner: o.owner || '' }); } catch (e) { }
+      try {
+        var o = JSON.parse(v), g = { ten: k.slice(5).trim(), san: o.san, alias: o.alias || [], owner: o.owner || '', active: o.active !== false };
+        g.nhom = o.nhom || defaultNhom(g);
+        gians.push(g);
+      } catch (e) { }
     } else if (k) m[k] = v;
   });
   return {
@@ -256,7 +299,12 @@ function buildList() {
   return {
     cases: readRows('Cases').map(function (r) { return toObj('Cases', r); }),
     khoMeta: { lastUpdate: kl.lastUpdate || '', by: kl.by || '', count: Math.max(0, sheet('Kho').getLastRow() - 1) },
-    config: { kho_list: cfg.kho_list, gians: cfg.gians.map(function (g) { return { san: g.san, ten: g.ten, owner: g.owner, owner_name: names[g.owner] || g.owner, alias: g.alias }; }) },
+    config: {
+      kho_list: cfg.kho_list, nhom_list: nhomList(cfg.gians),
+      gians: cfg.gians.map(function (g) {
+        return { san: g.san, ten: g.ten, nhom: g.nhom, owner: g.owner, owner_name: names[g.owner] || g.owner, alias: g.alias, active: g.active };
+      })
+    },
     weekly: readWeekly()
   };
 }
@@ -278,7 +326,8 @@ var ACTIONS = {
   ingest_san: { write: function (b) { return !b.dry_run; }, fn: actIngestSan },
   update_cases: { write: true, fn: actUpdateCases },
   admin_upsert_user: { write: true, fn: actAdminUpsertUser },
-  admin_list_users: { fn: actAdminListUsers }
+  admin_list_users: { fn: actAdminListUsers },
+  admin_upsert_gian: { write: true, fn: actAdminUpsertGian }
 };
 
 function doPost(e) {
@@ -373,6 +422,21 @@ function actChangePin(user, b) {
   return {};
 }
 
+function gianValue(g) { return JSON.stringify({ san: g.san, nhom: g.nhom, alias: g.alias, owner: g.owner, active: g.active }); }
+
+function actAdminUpsertGian(user, b) {
+  if (user.role !== 'admin') throw err('FORBIDDEN', 'Chỉ admin được quản lý gian hàng');
+  var cfg = getConfig(), names = readRows('Users', 1).map(function (r) { return String(r[0]).trim().toLowerCase(); });
+  var v = validateGian(b, cfg.gians, names);
+  if (v.error) throw err(v.error.code, v.error.message);
+  var g = v.gian, key = 'gian:' + g.ten, rows = readRows('Config'), i = -1;
+  rows.forEach(function (r, j) { if (String(r[0]).trim() === key) i = j; });
+  if (i >= 0) sheet('Config').getRange(i + 2, 1, 1, 2).setValues([[key, gianValue(g)]]);
+  else appendRows('Config', [[key, gianValue(g)]]);
+  logAction(user.username, 'admin_upsert_gian', g);
+  return { gian: g, created: v.isNew };
+}
+
 function actAdminListUsers(user) {
   if (user.role !== 'admin') throw err('FORBIDDEN', 'Chỉ admin được quản lý người dùng');
   return { users: readRows('Users').map(parseUser).filter(function (u) { return u.username; })
@@ -438,6 +502,7 @@ function actIngestSan(user, b) {
   var tuan = wk.tuan;
   if (!gian) throw err('NOT_FOUND', 'Không tìm thấy gian: ' + b.gian);
   if (!canEditGian(user, gian.ten)) throw err('FORBIDDEN', 'Bạn không phụ trách gian ' + gian.ten);
+  if (!gian.active) throw err('BAD_INPUT', 'Gian ' + gian.ten + ' đã tắt');
   if (!Array.isArray(b.rows)) throw err('BAD_INPUT', 'Thiếu danh sách dòng (rows)');
   if (b.rows.length > MAX_ROWS) throw err('TOO_MANY', 'Tối đa ' + MAX_ROWS + ' dòng mỗi lần');
   var d = dedupeBy(b.rows.map(function (r) { return Object.assign({}, r, { ma: normalizeMa(r && r.ma) }); }),
@@ -456,7 +521,7 @@ function actIngestSan(user, b) {
     else if (kho[r.ma]) res.matchedKho++;
     else {
       add.push([r.ma, tuan, gian.san, gian.ten, r.loai_tep, s(r.ten_sp), s(r.phan_loai), s(r.ma_don_hang), s(r.dvvc), '', 'Mới',
-        '', '', now, user.username, '', now, user.username, wk.tuan_key]);
+        '', '', now, user.username, '', now, user.username, wk.tuan_key, clipLyDo(r.ly_do_tra)]);
     }
   });
   res.created = add.length;
@@ -544,10 +609,21 @@ function setup() {
     sh.getRange(1, 1, 1, h.length).setValues([h]).setFontWeight('bold');
     sh.setFrozenRows(1);
   });
-  var have = {};
-  readRows('Config').forEach(function (r) { have[String(r[0]).trim()] = 1; });
+  var have = {}, cfgRows = readRows('Config'), fixed = false;
+  cfgRows.forEach(function (r) {
+    var k = String(r[0]).trim();
+    have[k] = 1;
+    if (k.indexOf('gian:') !== 0) return;
+    try {
+      var o = JSON.parse(String(r[1]));
+      if (!o.nhom) { o.nhom = defaultNhom({ owner: o.owner, san: o.san }); fixed = true; }
+      if (o.active == null) { o.active = true; fixed = true; }
+      r[1] = JSON.stringify(o);
+    } catch (e) { }
+  });
+  if (fixed) writeRows('Config', cfgRows);
   var add = DEFAULT_CONFIG.concat(SEED_GIANS.map(function (g) {
-    return ['gian:' + g[1], JSON.stringify({ san: g[0], alias: g[2], owner: g[3] })];
+    return ['gian:' + g[1], gianValue({ san: g[0], nhom: defaultNhom({ owner: g[3], san: g[0] }), alias: g[2], owner: g[3], active: true })];
   })).filter(function (r) { return !have[r[0]]; });
   appendRows('Config', add);
   book.getSheets().forEach(function (sh) {

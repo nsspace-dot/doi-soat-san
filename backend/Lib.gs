@@ -4,10 +4,48 @@ var CLOSED_STATES = ['Đã tìm thấy', 'Đã khiếu nại', 'Xác nhận mấ
 var LOAI_TEP = ['Trả hàng', 'Giao không thành công'];
 var COUNTER_BY_STATE = { 'Đã tìm thấy': 'found', 'Đã khiếu nại': 'complained', 'Xác nhận mất': 'lost' };
 var WEEKLY_FIELDS = ['total', 'found', 'complained', 'lost'];
-var EDITABLE_FIELDS = ['kho', 'trang_thai', 'ghi_chu', 'thoi_gian_tra', 'tuan'];
+var EDITABLE_FIELDS = ['kho', 'trang_thai', 'ghi_chu', 'thoi_gian_tra', 'tuan', 'ly_do_tra'];
+var SAN_LIST = ['Shopee', 'TikTok', 'Khác'];
+var NHOM_ORDER = ['Shopee', 'TikTok', 'Newtea'];
+var LY_DO_MAX = 300, GIAN_MAX = 60;
+
+function clipLyDo(v) { return v == null ? '' : String(v).trim().slice(0, LY_DO_MAX); }
+
+// Nhóm mặc định cho gian chưa có nhom: gian của "tam" là Newtea, còn lại theo nền tảng.
+function defaultNhom(g) { return g.owner === 'tam' ? 'Newtea' : g.san; }
+
+function nhomList(gians) {
+  var u = [];
+  gians.forEach(function (g) { if (g.nhom && u.indexOf(g.nhom) < 0) u.push(g.nhom); });
+  return NHOM_ORDER.filter(function (n) { return u.indexOf(n) >= 0; })
+    .concat(u.filter(function (n) { return NHOM_ORDER.indexOf(n) < 0; }).sort(function (a, b) { return a.localeCompare(b, 'vi'); }));
+}
+
+// Kiểm tra dữ liệu thêm/sửa gian. Trả {gian, isNew} hoặc {error}.
+function validateGian(inp, gians, usernames) {
+  var e = function (m) { return { error: { code: 'BAD_INPUT', message: m } }; };
+  var ten = String(inp.ten || '').trim().replace(/\s+/g, ' ');
+  if (!ten) return e('Tên gian không được rỗng');
+  if (ten.length > GIAN_MAX) return e('Tên gian tối đa ' + GIAN_MAX + ' ký tự');
+  var cur = gians.filter(function (g) { return g.ten === ten; })[0];
+  if (!cur && gians.some(function (g) { return foldText(g.ten) === foldText(ten); })) return e('Tên gian đã tồn tại: ' + ten);
+  var san = inp.san != null ? String(inp.san) : (cur ? cur.san : '');
+  if (SAN_LIST.indexOf(san) < 0) return e('Nền tảng phải là Shopee, TikTok hoặc Khác');
+  var nhom = String(inp.nhom != null ? inp.nhom : (cur ? cur.nhom : san)).trim().replace(/\s+/g, ' ');
+  if (!nhom || nhom.length > GIAN_MAX) return e('Tên nhóm không hợp lệ');
+  var same = gians.filter(function (g) { return g.nhom && foldText(g.nhom) === foldText(nhom); })[0];
+  if (same) nhom = same.nhom;
+  var owner = String(inp.owner != null ? inp.owner : (cur ? cur.owner : '')).trim().toLowerCase();
+  if (usernames.indexOf(owner) < 0) return e('Người phụ trách không tồn tại: ' + owner);
+  var alias = inp.alias != null ? inp.alias : (cur ? cur.alias : []);
+  if (!Array.isArray(alias)) alias = String(alias).split(',');
+  alias = alias.map(function (a) { return String(a).trim(); }).filter(String);
+  var active = inp.active != null ? !!inp.active : (cur ? cur.active !== false : true);
+  return { gian: { ten: ten, san: san, nhom: nhom, owner: owner, alias: alias, active: active }, isNew: !cur };
+}
 
 function normalizeMa(v) {
-  return v == null ? '' : String(v).replace(/[\s​﻿]+/g, '').toUpperCase();
+  return v == null ? '' : String(v).replace(/[\s\u200b\ufeff]+/g, '').toUpperCase();
 }
 
 function dedupeBy(items, keyFn) {
@@ -46,6 +84,7 @@ function validateFields(fields, khoList, todayYmd) {
     if (EDITABLE_FIELDS.indexOf(k) < 0) return { error: { code: 'BAD_FIELD', message: 'Không được sửa cột ' + k } };
     if (k === 'kho' && v && khoList.indexOf(v) < 0) return { error: { code: 'BAD_INPUT', message: 'Kho không hợp lệ: ' + v } };
     if (k === 'trang_thai' && !isValidState(v)) return { error: { code: 'BAD_INPUT', message: 'Trạng thái không hợp lệ: ' + v } };
+    if (k === 'ly_do_tra') { out[k] = clipLyDo(v); continue; }
     if (k === 'tuan') {
       var w = normalizeWeek(v, todayYmd);
       if (!w) return { error: { code: 'BAD_INPUT', message: WEEK_ERR } };
@@ -122,7 +161,7 @@ function normalizeWeek(s, todayYmd) {
 }
 
 function foldText(s) {
-  return ' ' + String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[đĐ]/g, 'D')
+  return ' ' + String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'D')
     .toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim() + ' ';
 }
 

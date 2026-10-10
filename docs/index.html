@@ -13,7 +13,9 @@
   <div class="actions">
     <button id="btnRefresh">Làm mới</button>
     <button id="btnUpload" class="auth" hidden>Tải file</button>
+    <button id="btnImport" class="auth" hidden>Nhập từ Sheet cũ</button>
     <button id="btnStaff" class="admin" hidden>Nhân viên</button>
+    <button id="btnGian" class="admin" hidden>Gian hàng</button>
     <span id="userName" class="auth who" hidden></span>
     <button id="btnPin" class="auth" hidden>Đổi PIN</button>
     <button id="btnLogout" class="auth" hidden>Đăng xuất</button>
@@ -72,6 +74,44 @@
   <section class="box">
     <h2>Nhân viên</h2>
     <div class="tableWrap"><table id="tblStaff"><thead><tr><th>Tên hiển thị</th><th>Tên đăng nhập</th><th>Vai trò</th><th>Gian phụ trách</th><th>Trạng thái</th><th>Đặt lại PIN</th><th></th></tr></thead><tbody></tbody></table></div>
+  </section>
+</main>
+
+<main id="gianView" hidden>
+  <p><button data-back>‹ Về danh sách</button></p>
+  <section class="box">
+    <h2>Gian hàng</h2>
+    <p class="muted">Không xóa được gian, chỉ tắt (đơn cũ vẫn hiển thị). Gian thuộc nền tảng "Khác" chưa tải được file sàn tự động, chỉ nhập qua màn "Nhập từ Sheet cũ".</p>
+    <div class="tableWrap"><table id="tblGian"><thead><tr><th>Tên gian</th><th>Nền tảng</th><th>Nhóm</th><th>Phụ trách</th><th>Alias (cách nhau dấu phẩy)</th><th>Trạng thái</th></tr></thead><tbody></tbody></table></div>
+  </section>
+  <section class="box">
+    <h2>Thêm gian</h2>
+    <form id="formGian" class="filters">
+      <label class="grow">Tên gian<input name="ten" maxlength="60" required></label>
+      <label>Nền tảng<select name="san"><option>Shopee</option><option>TikTok</option><option>Khác</option></select></label>
+      <label>Nhóm<select name="nhom" id="gNhom"></select></label>
+      <label id="gNhomNewBox" hidden>Tên nhóm mới<input name="nhom_new" maxlength="60"></label>
+      <label>Phụ trách<select name="owner" id="gOwner"></select></label>
+      <label class="grow">Alias<input name="alias" placeholder="VD: TV, TƯỜNG VIP"></label>
+      <button class="primary" type="submit">Thêm gian</button>
+    </form>
+  </section>
+</main>
+
+<main id="importView" hidden>
+  <p><button data-back>‹ Về danh sách</button></p>
+  <section class="box">
+    <h2>Nhập từ Sheet cũ</h2>
+    <p class="muted">Mở Sheet cũ, chọn cả vùng dữ liệu kèm dòng tiêu đề (Tuần/Ngày đối soát, Mã vận đơn, Gian hàng, Lý do trả, Tên sản phẩm, Phân loại, Thời gian trả trên hệ thống, Trạng thái, KHO...), sao chép rồi dán vào ô dưới. Nhập lại nhiều lần vẫn an toàn: mã đã có không tạo thêm.</p>
+    <div class="filters">
+      <label>Sàn mặc định (dòng không có tiền tố TIKTOK/SHOPEE)<select id="impSan"><option>Shopee</option><option>TikTok</option></select></label>
+      <button id="impParse" class="primary">Phân tích</button>
+    </div>
+    <textarea id="impText" rows="8" style="width:100%" placeholder="Dán dữ liệu từ Google Sheet / Excel vào đây"></textarea>
+    <div id="impInfo"></div>
+    <div id="impPreview"></div>
+    <button id="impRun" class="primary" disabled>Nhập vào hệ thống</button>
+    <div id="impResult"></div>
   </section>
 </main>
 

@@ -37,4 +37,12 @@ eq([W('29/12 - 04/01', '2027-01-02').tuan_key, W('29/12 - 04/01', '2026-12-20').
 const G = [['Shopee', 'Shopee Tường Vip', ['TV']], ['Shopee', 'Shopee Tường Vip New', ['TV NEW']], ['TikTok', 'TikTok Tường Vip', []]]
   .map(([san, ten, alias]) => ({ san, ten, alias }));
 eq([L.matchGian('Shopee_tv new_tuan40.xlsx', G).ten, L.matchGian('tiktok tuong vip.xlsx', G).ten], ['Shopee Tường Vip New', 'TikTok Tường Vip']);
+eq([L.clipLyDo('  ' + 'x'.repeat(400)).length, L.validateFields({ ly_do_tra: 'y'.repeat(350) }, [], '2026-10-10').fields.ly_do_tra.length], [300, 300]);
+eq([L.defaultNhom({ owner: 'tam', san: 'Shopee' }), L.defaultNhom({ owner: 'nhung', san: 'Shopee' }), L.defaultNhom({ owner: 'man', san: 'TikTok' })], ['Newtea', 'Shopee', 'TikTok']);
+eq(L.nhomList([{ nhom: 'Zeta' }, { nhom: 'Newtea' }, { nhom: 'TikTok' }, { nhom: 'Shopee' }, { nhom: 'Anh' }]), ['Shopee', 'TikTok', 'Newtea', 'Anh', 'Zeta']);
+const GG = [{ ten: 'Shopee Tường Vip', san: 'Shopee', nhom: 'Shopee', owner: 'nhung', alias: [] }];
+eq([L.validateGian({ ten: 'shopee tuong vip', san: 'Shopee', owner: 'nhung' }, GG, ['nhung']).error.code,
+  L.validateGian({ ten: 'Gian Mới', san: 'Khác', owner: 'ai_do' }, GG, ['nhung']).error.message,
+  L.validateGian({ ten: 'Gian Mới', san: 'Khác', nhom: 'newtea', owner: 'nhung', alias: 'A, B' }, GG.concat([{ ten: 'X', nhom: 'Newtea' }]), ['nhung']).gian],
+  ['BAD_INPUT', 'Người phụ trách không tồn tại: ai_do', { ten: 'Gian Mới', san: 'Khác', nhom: 'Newtea', owner: 'nhung', alias: ['A', 'B'], active: true }]);
 console.log('OK: tất cả test qua');

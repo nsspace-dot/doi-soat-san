@@ -2,7 +2,7 @@
 (function (root) {
   var P = {};
 
-  P.normalizeMa = function (v) { return v == null ? '' : String(v).replace(/[\s​﻿]+/g, '').toUpperCase(); };
+  P.normalizeMa = function (v) { return v == null ? '' : String(v).replace(/[\s\u200b\ufeff]+/g, '').toUpperCase(); };
 
   // Mã vận đơn thật không có khoảng trắng bên trong và dài ≥ 3.
   P.isLikelyRealTrackingId = function (raw) {
@@ -131,9 +131,11 @@
     return d;
   };
 
+  var LYDO_KWS = ['return reason', 'cancel reason', 'lý do trả', 'lý do giao không thành công', 'lý do hoàn', 'reason', 'lý do'];
   P.parseSan = function (aoa) {
     var d = P.detectSan(aoa);
     if (d.error) return d;
+    d.ly_do = P.findCol(d.hMap, LYDO_KWS, ['ghi chú']);
     var rows = [], total = 0, noMa = 0, badMa = 0;
     var g = function (r, i) { return i === undefined ? '' : String(r[i] == null ? '' : r[i]).trim(); };
     for (var i = d.headerRow + 1; i < aoa.length; i++) {
@@ -144,14 +146,14 @@
       if (!raw) { noMa++; continue; }
       if (!P.isLikelyRealTrackingId(raw)) { badMa++; continue; }
       rows.push({ ma: P.normalizeMa(raw), loai_tep: d.loai_tep, ten_sp: g(r, d.ten_sp), phan_loai: g(r, d.phan_loai),
-        ma_don_hang: g(r, d.ma_don_hang), dvvc: g(r, d.dvvc) });
+        ma_don_hang: g(r, d.ma_don_hang), dvvc: g(r, d.dvvc), ly_do_tra: g(r, d.ly_do).slice(0, 300) });
     }
     return { san: d.san, loai_tep: d.loai_tep, total: total, rows: rows, skipped: { noMa: noMa, badMa: badMa } };
   };
 
   // Gợi ý gian theo tên file (giống backend Lib.gs): lọc theo sàn nếu có, alias dài thắng.
   function fold(s) {
-    return ' ' + String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[đĐ]/g, 'D')
+    return ' ' + String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'D')
       .toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim() + ' ';
   }
   P.matchGian = function (name, gians) {
@@ -214,6 +216,115 @@
   };
   P.splitCodes = function (text) {
     return String(text || '').split(/[\s,;]+/).map(P.normalizeMa).filter(Boolean);
+  };
+
+
+  // ---------- Nhập từ Sheet cũ ----------
+  var fn = function (x) { return fold(x).trim(); };
+  P.STATES = ['Mới', 'Chưa về kho', 'Chưa tìm thấy', 'Đã tìm thấy', 'Đã khiếu nại', 'Xác nhận mất'];
+
+  // TSV dán từ Google Sheet/Excel: ô trong ngoặc kép có thể chứa tab, xuống dòng, "" là dấu ".
+  P.parseTsv = function (text) {
+    var t = String(text || '').replace(/\r\n?/g, '\n'), rows = [], row = [], cell = '', q = false;
+    for (var i = 0; i < t.length; i++) {
+      var ch = t[i];
+      if (q) {
+        if (ch === '"') { if (t[i + 1] === '"') { cell += '"'; i++; } else q = false; }
+        else cell += ch;
+      } else if (ch === '"' && cell === '') q = true;
+      else if (ch === '\t') { row.push(cell); cell = ''; }
+      else if (ch === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; }
+      else cell += ch;
+    }
+    if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+    return rows;
+  };
+
+  P.normalizeOldWeek = function (s, today) {
+    var t = String(s == null ? '' : s).trim().replace(/^ngày\s*/i, '').replace(/\./g, '/');
+    return P.normalizeWeek(t, today);
+  };
+
+  // Khớp tên gian Sheet cũ: chính xác (có/không tiền tố sàn, NS → Newshop) rồi alias, cuối cùng gần đúng.
+  P.resolveGian = function (raw, defSan, gians) {
+    var f = fn(raw);
+    if (!f) return null;
+    var by = function (name) { var x = fn(name); return gians.filter(function (g) { return fn(g.ten) === x; })[0] || null; };
+    var g = by(raw);
+    if (g) return g;
+    var m = /^(TIKTOK|SHOPEE)\s+(.*)$/.exec(f), san = m ? (m[1] === 'TIKTOK' ? 'TikTok' : 'Shopee') : defSan, rest = m ? m[2] : f;
+    if ((g = by(san + ' ' + rest))) return g;
+    if (san === 'Shopee' && (g = by('Shopee ' + rest.replace(/^NS\s+/, 'NEWSHOP ')))) return g;
+    var pool = gians.filter(function (x) { return x.san === san; });
+    g = pool.filter(function (x) { return (x.alias || []).some(function (a) { return fn(a) === rest; }); })[0];
+    return g || P.matchGian(san + ' ' + rest, pool);
+  };
+
+  P.inferLoai = function (lydo) {
+    var f = fn(lydo);
+    return /TU CHOI NHAN|KHONG THE LIEN LAC|KHONG LIEN LAC DUOC/.test(f) ? 'Giao không thành công' : 'Trả hàng';
+  };
+  P.normLoai = function (raw) {
+    var f = fn(raw);
+    return /GIAO/.test(f) ? 'Giao không thành công' : /TRA/.test(f) ? 'Trả hàng' : null;
+  };
+  P.mapTrangThai = function (raw) {
+    var f = fn(raw);
+    if (!f || f === 'CHO KIEM TRA') return { tt: 'Mới' };
+    if (f === 'DA NHAN KHO') return { tt: 'Đã tìm thấy' };
+    var s = P.STATES.filter(function (x) { return fn(x) === f; })[0];
+    return s ? { tt: s } : { tt: 'Mới', odd: true };
+  };
+  P.normalizeKho = function (raw, list) {
+    var t = String(raw == null ? '' : raw).trim();
+    if (!t) return { kho: '' };
+    if (/^53\s*[\/\-]\s*8/.test(t)) return { kho: 'VL' };
+    var f = ' ' + fn(t) + ' ', k = (list || []).filter(function (x) { return f.indexOf(' ' + fn(x) + ' ') >= 0; })[0];
+    return k ? { kho: k } : { kho: '', bad: true };
+  };
+
+  // o: {defaultSan, gians (đang bật, được phép), kho_list, today, manual: {tên gốc: tên gian}}
+  P.parseOldSheet = function (aoa, o) {
+    var h = P.detectHeader(aoa, ['mã vận đơn']);
+    if (h.headerRow < 0) return { error: 'Không thấy dòng tiêu đề có cột "Mã vận đơn"' };
+    var f = function (k, ex) { return P.findCol(h.hMap, k, ex); };
+    var c = {
+      tuan: f(['tuần đối soát', 'ngày đối soát', 'tuần', '=ngày']), ma: f(['mã vận đơn']), gian: f(['gian hàng', '=gian']),
+      loai: f(['loại tệp tin', 'loại tệp']), lydo: f(['lý do trả', 'lý do'], ['ghi chú']), ten_sp: f(['tên sản phẩm']),
+      phan_loai: f(['phân loại']), tg: f(['thời gian trả']), tt: f(['trạng thái'], ['kho']), kho: f(['=kho', 'kho'], ['trạng thái']),
+      ghi_chu: f(['ghi chú']), mdh: f(['mã đơn hàng']), dvvc: f(['đơn vị vận chuyển', 'đvvc'])
+    };
+    var out = { rows: [], noMa: 0, dup: 0, unmatched: {}, inferred: 0, odd: 0, badKho: 0, noKho: 0, hasLoai: c.loai !== undefined, errors: 0 };
+    var seen = {}, lastTuan = '', manual = o.manual || {};
+    for (var i = h.headerRow + 1; i < aoa.length; i++) {
+      var r = (aoa[i] || []).map(function (x) { return String(x == null ? '' : x).trim(); });
+      var g = function (k) { return c[k] === undefined ? '' : (r[c[k]] || ''); };
+      if (!r.some(Boolean)) continue;
+      if (g('tuan')) lastTuan = g('tuan');
+      var ma = P.normalizeMa(g('ma'));
+      if (!ma || !P.isLikelyRealTrackingId(g('ma'))) { out.noMa++; continue; }
+      if (seen[ma]) { out.dup++; continue; }
+      seen[ma] = 1;
+      var row = { line: i + 1, ma: ma, gianRaw: g('gian'), ly_do_tra: g('lydo').slice(0, 300), ten_sp: g('ten_sp'), phan_loai: g('phan_loai'),
+        ma_don_hang: g('mdh'), dvvc: g('dvvc'), thoi_gian_tra: g('tg'), ghi_chu: g('ghi_chu') };
+      var w = P.normalizeOldWeek(lastTuan, o.today);
+      row.tuan = w ? w.tuan : ''; row.tuan_raw = lastTuan;
+      var lt = c.loai !== undefined ? P.normLoai(g('loai')) : null;
+      if (lt) row.loai_tep = lt; else { row.loai_tep = P.inferLoai(row.ly_do_tra); row.inferred = true; out.inferred++; }
+      var st = P.mapTrangThai(g('tt'));
+      row.trang_thai = st.tt;
+      if (st.odd) { out.odd++; row.ghi_chu = (row.ghi_chu ? row.ghi_chu + '; ' : '') + 'Sheet cũ: ' + g('tt'); }
+      var kh = P.normalizeKho(g('kho'), o.kho_list);
+      row.kho = kh.kho;
+      if (kh.bad) out.badKho++;
+      var gg = manual[row.gianRaw] ? o.gians.filter(function (x) { return x.ten === manual[row.gianRaw]; })[0] : P.resolveGian(row.gianRaw, o.defaultSan, o.gians);
+      if (gg) { row.gian = gg.ten; if (!row.kho && gg.nhom !== 'Newtea') out.noKho++; }
+      else { out.unmatched[row.gianRaw] = (out.unmatched[row.gianRaw] || 0) + 1; row.error = 'Chưa chọn gian cho "' + (row.gianRaw || '(trống)') + '"'; }
+      if (!w) row.error = (row.error ? row.error + '; ' : '') + 'Tuần không hợp lệ: "' + lastTuan + '"';
+      if (row.error) out.errors++;
+      out.rows.push(row);
+    }
+    return out;
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = P;
