@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Đối soát đơn lệch</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <div class="brand"><h1>Đối soát đơn lệch Shopee/TikTok</h1><div id="khoMeta" class="muted"></div></div>
+  <div class="actions">
+    <button id="btnRefresh">Làm mới</button>
+    <button id="btnUpload" class="auth" hidden>Tải file</button>
+    <span id="userName" class="auth muted" hidden></span>
+    <button id="btnPin" class="auth" hidden>Đổi PIN</button>
+    <button id="btnLogout" class="auth" hidden>Đăng xuất</button>
+    <button id="btnLogin" class="primary">Đăng nhập</button>
+  </div>
+</header>
+<div id="msg" hidden></div>
+
+<main id="listView">
+  <section class="cards">
+    <div class="card c-chuatim"><b id="cChuaTim">0</b><span>Chưa tìm thấy</span></div>
+    <div class="card c-moi"><b id="cMoi">0</b><span>Mới (chưa phân loại)</span></div>
+    <div class="card c-chuave"><b id="cChuaVe">0</b><span>Chưa về kho</span></div>
+    <div class="card c-ton"><b id="cTon">0</b><span>Tồn ≥ 7 ngày</span></div>
+  </section>
+  <section class="filters">
+    <label>Sàn<select id="fSan"></select></label>
+    <label>Gian<select id="fGian"></select></label>
+    <label>KHO<select id="fKho"></select></label>
+    <label>Tuần<select id="fTuan"></select></label>
+    <label>Trạng thái<select id="fTt"></select></label>
+    <label class="grow">Mã vận đơn<textarea id="fMa" rows="1" placeholder="Dán 1 hoặc nhiều mã (cách nhau dòng/dấu cách)"></textarea></label>
+    <label class="chk"><input type="checkbox" id="fClosed"> Hiện đơn đã đóng (giữ 14 ngày)</label>
+    <span id="fCount" class="muted"></span>
+  </section>
+  <section id="bulk" class="bulk" hidden>
+    <b id="bulkCount"></b>
+    <select id="bulkKho"></select><button id="bulkKhoBtn">Đặt KHO</button>
+    <select id="bulkTt"></select><button id="bulkTtBtn">Đặt trạng thái</button>
+    <button id="bulkClear">Bỏ chọn</button>
+  </section>
+  <div class="tableWrap"><table id="tbl"><thead></thead><tbody></tbody></table></div>
+  <div class="pager"><button id="pPrev">‹ Trước</button><span id="pInfo"></span><button id="pNext">Sau ›</button></div>
+</main>
+
+<main id="uploadView" hidden>
+  <p><button id="btnBack">‹ Về danh sách</button></p>
+  <section class="box">
+    <h2>A. File kho (mã vận đơn kho đã quét)</h2>
+    <input type="file" id="khoFiles" multiple accept=".xlsx,.xls,.csv">
+    <div id="khoInfo"></div>
+    <button id="khoSave" class="primary" disabled>Ghi vào hệ thống</button>
+    <div id="khoResult"></div>
+  </section>
+  <section class="box">
+    <h2>B. File sàn (trả hàng / giao không thành công)</h2>
+    <input type="file" id="sanFiles" multiple accept=".xlsx,.xls,.csv">
+    <div id="sanList"></div>
+  </section>
+</main>
+
+<dialog id="dlgLogin">
+  <form id="formLogin" method="dialog">
+    <h3>Đăng nhập</h3>
+    <label>Tên đăng nhập<input name="username" autocomplete="username" required></label>
+    <label>PIN<input name="pin" type="password" autocomplete="current-password" required></label>
+    <div class="err" id="loginErr"></div>
+    <div class="row"><button type="button" data-close>Hủy</button><button class="primary" type="submit">Đăng nhập</button></div>
+  </form>
+</dialog>
+<dialog id="dlgPin">
+  <form id="formPin" method="dialog">
+    <h3>Đổi PIN</h3>
+    <label>PIN hiện tại<input name="old_pin" type="password" required></label>
+    <label>PIN mới (≥ 6 ký tự)<input name="new_pin" type="password" minlength="6" required></label>
+    <label>Nhập lại PIN mới<input name="new_pin2" type="password" minlength="6" required></label>
+    <div class="err" id="pinErr"></div>
+    <div class="row"><button type="button" data-close>Hủy</button><button class="primary" type="submit">Đổi PIN</button></div>
+  </form>
+</dialog>
+
+<script src="config.js"></script>
+<script src="vendor/xlsx.full.min.js"></script>
+<script src="parse.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

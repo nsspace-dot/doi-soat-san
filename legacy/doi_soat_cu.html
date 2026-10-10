@@ -1,0 +1,2102 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Đối soát đơn hàng trả — Shopee &amp; TikTok</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --surface-hover: #f1f5f9;
+  --border: #e2e8f0;
+  --border-focus: #ff0050;
+  --text: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  
+  --tk: #09090b;
+  --tk2: #ff0050;
+  --tk3: #00f2fe;
+  
+  --green: #10b981;
+  --green-bg: #ecfdf5;
+  --green-border: #a7f3d0;
+  --green-dark: #047857;
+  
+  --red: #ef4444;
+  --red-bg: #fee2e2;
+  --red-border: #fca5a5;
+  --red-dark: #b91c1c;
+  
+  --blue: #3b82f6;
+  --blue-bg: #eff6ff;
+  --blue-border: #bfdbfe;
+  --blue-dark: #1d4ed8;
+  
+  --amber: #f59e0b;
+  --amber-bg: #fef3c7;
+  --amber-border: #fcd34d;
+  --amber-dark: #b45309;
+  
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
+  --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-theme="dark"] {
+  --bg: #09090b;
+  --surface: #18181b;
+  --surface-hover: #27272a;
+  --border: #27272a;
+  --text: #f4f4f5;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  transition: background 0.3s, color 0.3s;
+}
+
+.topbar {
+  background: var(--tk);
+  padding: 0 2rem;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: var(--shadow);
+}
+.tk-icon {
+  width: 36px; height: 36px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, var(--tk2) 0%, #ff4b72 100%);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 10px rgba(255, 0, 80, 0.3);
+}
+.tk-icon svg { width: 20px; height: 20px; fill: #fff; }
+.topbar h1 { font-size: 16px; font-weight: 800; color: #fff; letter-spacing: -0.02em; }
+.topbar-sub { font-size: 12px; color: rgba(255,255,255,0.5); margin-left: auto; font-weight: 500; }
+.tk-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--tk3); margin-left: 8px; animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: .3; transform: scale(0.8); } }
+
+.theme-btn {
+  background: rgba(255,255,255,0.08);
+  border: none;
+  cursor: pointer;
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff;
+  transition: var(--transition);
+}
+.theme-btn:hover { background: rgba(255,255,255,0.15); }
+.theme-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; }
+
+.container { max-width: 1200px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+.card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  padding: 24px;
+  box-shadow: var(--shadow);
+  margin-bottom: 1.5rem;
+  transition: background 0.3s, border-color 0.3s;
+}
+.card-title {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.card-title svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2.5; }
+
+.upload-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.col-label { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+.col-badge { font-size: 10px; font-weight: 800; background: var(--red-bg); color: var(--red-dark); border: 1px solid var(--red-border); border-radius: 4px; padding: 2px 8px; }
+.col-badge.b2 { background: var(--blue-bg); color: var(--blue-dark); border-color: var(--blue-border); }
+
+.drop-zone {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  min-height: 120px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px; cursor: pointer; transition: var(--transition); padding: 20px; text-align: center;
+}
+.drop-zone:hover, .drop-zone.dragover { border-color: var(--border-focus); background: var(--surface-hover); }
+.drop-zone svg { width: 32px; height: 32px; stroke: var(--text-muted); fill: none; stroke-width: 1.5; transition: var(--transition); }
+.drop-zone:hover svg, .drop-zone.dragover svg { stroke: var(--border-focus); transform: scale(1.05); }
+.drop-zone-text { font-size: 13px; color: var(--text-secondary); font-weight: 600; }
+.drop-zone-hint { font-size: 11px; color: var(--text-muted); }
+.drop-zone-hint.accent { color: var(--red-dark); font-weight: 700; }
+.drop-zone-hint.b { color: var(--blue-dark); font-weight: 700; }
+input[type=file] { display: none; }
+
+.file-list { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+.file-item { display: flex; align-items: center; gap: 8px; background: var(--green-bg); border: 1px solid var(--green-border); border-radius: var(--radius-sm); padding: 8px 12px; }
+.file-item svg { width: 14px; height: 14px; stroke: var(--green-dark); fill: none; stroke-width: 2; flex-shrink: 0; }
+.file-item-name { font-size: 12px; color: var(--green-dark); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+.file-item-shop { font-size: 10px; font-weight: 800; background: #fff; color: var(--red-dark); border: 1px solid var(--red-border); border-radius: 4px; padding: 2px 6px; cursor: pointer; transition: var(--transition); }
+.file-item-shop:hover { background: var(--red-bg); }
+.file-item-type { font-size: 11px; color: var(--text-muted); flex-shrink: 0; font-weight: 500; }
+.file-item-del { background: none; border: none; cursor: pointer; color: var(--green-dark); padding: 2px; display: flex; align-items: center; flex-shrink: 0; transition: var(--transition); }
+.file-item-del:hover { transform: scale(1.15); color: #000; }
+.file-item-del svg { width: 14px; height: 14px; stroke: currentColor; }
+
+.action-row { display: flex; align-items: center; gap: 16px; margin-top: 24px; }
+.btn-main { display: inline-flex; align-items: center; gap: 8px; padding: 0 28px; height: 46px; background: var(--tk2); color: #fff; border: none; border-radius: var(--radius-sm); font-size: 14px; font-weight: 700; cursor: pointer; transition: var(--transition); font-family: inherit; }
+.btn-main:disabled { opacity: .4; cursor: not-allowed; }
+.btn-main:not(:disabled):hover { opacity: .9; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(255,0,80,0.2); }
+.btn-main:not(:disabled):active { transform: translateY(0); }
+.btn-main svg { width: 16px; height: 16px; stroke: #fff; fill: none; stroke-width: 2.5; }
+.file-summary { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
+
+.progress-bar { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; margin-top: 18px; display: none; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, var(--tk2), var(--tk3)); width: 0; transition: width 0.2s ease; }
+
+#results { display: none; animation: fadeIn 0.4s ease-out; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+.section-label { font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 12px; }
+
+.metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 1.5rem; }
+.metric-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow); transition: var(--transition); }
+.metric-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.m-label { font-size: 11px; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+.m-value { font-size: 26px; font-weight: 800; color: var(--text); letter-spacing: -0.03em; line-height: 1; }
+.m-sub { font-size: 11px; color: var(--text-muted); margin-top: 6px; font-weight: 500; }
+.metric-card.green .m-value { color: var(--green); }
+.metric-card.red .m-value { color: var(--red); }
+.metric-card.pink .m-value { color: var(--tk2); }
+
+.warn-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 1.5rem; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+.chip-warn { background: var(--amber-bg); color: var(--amber-dark); border: 1px solid var(--amber-border); }
+.chip-ok { background: var(--green-bg); color: var(--green-dark); border: 1px solid var(--green-border); }
+
+.charts-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 1.5rem; }
+@media (max-width: 768px) { .charts-2 { grid-template-columns: 1fr; } }
+.chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); }
+.chart-card h3 { font-size: 12px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 16px; }
+
+.bar-horiz { display: flex; flex-direction: column; gap: 10px; }
+.bar-row { display: flex; align-items: center; gap: 10px; }
+.bar-label { font-size: 12px; color: var(--text-secondary); width: 140px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.bar-track { flex: 1; height: 18px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 4px; transition: width .8s cubic-bezier(.16,1,.3,1); }
+.bar-count { font-size: 12px; font-weight: 700; color: var(--text); min-width: 60px; text-align: right; }
+.bar-pct { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+
+.shop-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.shop-bar-label { font-size: 12px; color: var(--text-secondary); width: 140px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.shop-bar-track { flex: 1; height: 22px; display: flex; border-radius: 6px; overflow: hidden; background: var(--bg); }
+.shop-bar-match { height: 100%; background: var(--green); display: flex; align-items: center; padding-left: 8px; font-size: 10px; color: #fff; font-weight: 700; overflow: hidden; white-space: nowrap; transition: width .8s ease; }
+.shop-bar-miss { height: 100%; background: var(--red); display: flex; align-items: center; padding-left: 8px; font-size: 10px; color: #fff; font-weight: 700; overflow: hidden; white-space: nowrap; transition: width .8s ease; }
+.shop-bar-end { font-size: 12px; font-weight: 700; min-width: 60px; text-align: right; }
+
+.table-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 12px; flex-wrap: wrap; }
+.table-header-left { display: flex; align-items: center; gap: 10px; }
+.table-search { padding: 6px 12px; font-size: 12px; width: 180px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); font-family: inherit; outline: none; transition: var(--transition); }
+.table-search:focus { border-color: var(--border-focus); }
+
+.btn-export { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; cursor: pointer; color: var(--text-secondary); font-weight: 700; transition: var(--transition); font-family: inherit; }
+.btn-export:hover { background: var(--surface-hover); color: var(--text); border-color: var(--text-muted); }
+.btn-export svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+.table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
+th { background: var(--surface-hover); padding: 10px 14px; color: var(--text-secondary); font-weight: 700; white-space: nowrap; border-bottom: 1px solid var(--border); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+td { padding: 10px 14px; border-top: 1px solid var(--border); color: var(--text); white-space: nowrap; }
+tr:hover td { background: var(--bg); }
+.badge-amber { display: inline-flex; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; background: var(--amber-bg); color: var(--amber-dark); border: 1px solid var(--amber-border); }
+.badge-red { display: inline-flex; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; background: var(--red-bg); color: var(--red-dark); border: 1px solid var(--red-border); }
+/* Badge ngày cũ (>= 7 ngày) */
+.badge-old { display: inline-flex; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; background: var(--red-bg); color: var(--red-dark); border: 1px solid var(--red-border); }
+.badge-new { display: inline-flex; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; background: var(--blue-bg); color: var(--blue-dark); border: 1px solid var(--blue-border); }
+.shop-tag { font-size: 10px; font-weight: 800; background: var(--red-bg); color: var(--red-dark); border: 1px solid var(--red-border); border-radius: 4px; padding: 1px 6px; }
+.type-tag { font-size: 10px; background: var(--bg); color: var(--text-secondary); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; font-weight: 600; }
+code { font-family: 'JetBrains Mono', monospace; font-size: 11px; background: var(--bg); padding: 2px 6px; border-radius: 4px; color: var(--text-secondary); border: 1px solid var(--border); }
+.empty-row td { text-align: center; color: var(--text-muted); padding: 36px!important; font-size: 13px; font-weight: 500; }
+
+.tab-row { display: flex; gap: 0; margin-bottom: 18px; border-bottom: 2px solid var(--border); }
+.tab-btn { padding: 10px 20px; font-size: 13px; font-weight: 700; background: none; border: none; cursor: pointer; color: var(--text-muted); border-bottom: 2px solid transparent; margin-bottom: -2px; font-family: inherit; transition: var(--transition); }
+.tab-btn.active { color: var(--tk2); border-bottom-color: var(--tk2); }
+.tab-pane { display: none; }
+.tab-pane.active { display: block; }
+
+.pagination { display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin-top: 14px; }
+.page-btn { padding: 4px 10px; min-width: 28px; height: 28px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); cursor: pointer; font-size: 12px; font-weight: 600; color: var(--text-secondary); display: flex; align-items: center; justify-content: center; transition: var(--transition); }
+.page-btn:hover:not(:disabled) { background: var(--surface-hover); border-color: var(--text-muted); color: var(--text); }
+.page-btn.active { background: var(--tk2); border-color: var(--tk2); color: #fff; }
+.page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Info box */
+.info-box { background: var(--blue-bg); border: 1px solid var(--blue-border); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 12px; color: var(--blue-dark); margin-bottom: 14px; display: flex; gap: 8px; align-items: flex-start; line-height: 1.5; }
+.filter-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 14px; padding: 10px 12px; background: var(--surface-hover); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.filter-chk { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; color: var(--text); cursor: pointer; user-select: none; }
+.filter-chk input { width: 15px; height: 15px; accent-color: var(--tk2); cursor: pointer; }
+.filter-hint { font-size: 11.5px; color: var(--text-muted); line-height: 1.5; }
+.filter-hint code { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 1px 4px; color: var(--text-secondary); }
+.info-box svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; flex-shrink: 0; margin-top: 1px; }
+
+@media(max-width:640px){
+  .upload-grid, .metrics-grid, .charts-2 { grid-template-columns: 1fr; }
+  .bar-label, .shop-bar-label { width: 100px; }
+  .pagination { justify-content: center; }
+}
+
+/* ---- Bảng màu đổi theo sàn đang chọn ---- */
+html[data-platform="sp"] { --tk: #7a2e12; --tk2: #ee4d2d; --tk3: #f69113; --border-focus: #ee4d2d; }
+html[data-platform="tt"] { --tk: #09090b; --tk2: #ff0050; --tk3: #00f2fe; --border-focus: #ff0050; }
+
+/* ---- Thanh chuyển sàn ---- */
+.plat-row { max-width: 1180px; margin: 0 auto; padding: 18px 24px 0; display: flex; gap: 10px; }
+.plat-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  border: 1px solid var(--border); border-bottom: none; background: var(--surface-hover); color: var(--text-muted);
+  font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; transition: var(--transition); }
+.plat-btn:hover { color: var(--text-secondary); }
+.plat-btn.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+.plat-btn .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.plat-btn.sp .dot { background: #ee4d2d; }
+.plat-btn.tt .dot { background: #ff0050; }
+.plat-btn:not(.active) .dot { opacity: .35; }
+.plat-pane { display: none; }
+.plat-pane.active { display: block; }
+.plat-sep { max-width: 1180px; margin: 0 auto; border-top: 1px solid var(--border); }
+
+/* Shopee có 3 ô tải tệp, TikTok có 2 ---- */
+#pane_sp .upload-grid { grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+@media (max-width: 900px) { #pane_sp .upload-grid { grid-template-columns: 1fr; } }
+.col-badge.b3 { background: var(--amber-bg); color: var(--amber-dark); border-color: var(--amber-border); }
+
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="tk-icon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="m9 12 2 2 4-4"/></svg>
+  </div>
+  <h1 id="platTitle">Đối soát đơn hàng trả</h1>
+  <div class="topbar-sub">Shopee &amp; TikTok Shop</div>
+  <div class="tk-dot"></div>
+  <button class="theme-btn" id="theme-toggle" onclick="toggleTheme()" title="Đổi giao diện Sáng/Tối">
+    <svg id="theme-icon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</div>
+
+<div class="plat-row">
+  <button class="plat-btn sp active" id="platBtnSp" onclick="switchPlatform('sp')"><span class="dot"></span>Shopee</button>
+  <button class="plat-btn tt" id="platBtnTt" onclick="switchPlatform('tt')"><span class="dot"></span>TikTok Shop</button>
+</div>
+<div class="plat-sep"></div>
+
+<div class="plat-pane active" id="pane_sp">
+<div class="container">
+  <div class="card">
+    <div class="section-label">Tải tệp dữ liệu</div>
+    <div class="upload-grid">
+
+      <div>
+        <div class="col-label">
+          Đơn hàng Shopee
+          <span class="col-badge">Nhiều tệp</span>
+        </div>
+        <div class="drop-zone" id="sp_zone1" onclick="document.getElementById('sp_inp1').click()">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+          <div class="drop-zone-text">Kéo thả tệp vào đây</div>
+          <div class="drop-zone-hint">Đơn hủy / giao không thành công</div>
+          <div class="drop-zone-hint accent">Đối soát bằng cột <b>Mã vận đơn</b></div>
+        </div>
+        <input type="file" id="sp_inp1" accept=".xlsx,.xls,.csv" multiple>
+        <div class="file-list" id="sp_list1"></div>
+      </div>
+
+      <div>
+        <div class="col-label">
+          Khiếu nại Trả hàng/Hoàn tiền
+          <span class="col-badge b3">Nhiều tệp</span>
+        </div>
+        <div class="drop-zone" id="sp_zone2" onclick="document.getElementById('sp_inp2').click()">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+          <div class="drop-zone-text">Kéo thả tệp vào đây</div>
+          <div class="drop-zone-hint">Khách yêu cầu trả hàng / hoàn tiền</div>
+          <div class="drop-zone-hint accent">Đối soát bằng cột <b>Mã vận đơn trả hàng</b></div>
+        </div>
+        <input type="file" id="sp_inp2" accept=".xlsx,.xls,.csv" multiple>
+        <div class="file-list" id="sp_list2"></div>
+      </div>
+
+      <div>
+        <div class="col-label">
+          Kho / Đối soát
+          <span class="col-badge b2">Nhiều tệp</span>
+        </div>
+        <div class="drop-zone" id="sp_zone3" onclick="document.getElementById('sp_inp3').click()">
+          <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+          <div class="drop-zone-text">Kéo thả tệp vào đây</div>
+          <div class="drop-zone-hint">File quét mã vạch + backlog kỳ trước</div>
+          <div class="drop-zone-hint b">Nhận diện cột: Code, Mã vận đơn, Tracking ID</div>
+        </div>
+        <input type="file" id="sp_inp3" accept=".xlsx,.xls,.csv" multiple>
+        <div class="file-list" id="sp_list3"></div>
+      </div>
+
+    </div>
+
+    <div class="filter-row">
+      <label class="filter-chk">
+        <input type="checkbox" id="sp_chkSkipRefundOnly" checked>
+        <span>Bỏ qua đơn hoàn tiền không có hàng trả về</span>
+      </label>
+      <span class="filter-hint">Đơn có <code>Phương án = Hoàn tiền ngay</code> hoặc <code>Trạng thái trả hàng = Không</code> thì khách không gửi hàng — không tính là thất thoát</span>
+    </div>
+
+    <div class="action-row">
+      <button class="btn-main" id="sp_btnRun" disabled onclick="SP.runMatch()">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Tiến hành đối soát
+      </button>
+      <div class="file-summary" id="sp_fileSummary">Chưa có file nào được chọn</div>
+    </div>
+    <div class="progress-bar" id="sp_pb"><div class="progress-fill" id="sp_pbFill"></div></div>
+  </div>
+
+  <div id="sp_results">
+    <div class="card">
+      <div class="section-label">Kết quả đối soát tổng quan</div>
+      <div class="metrics-grid">
+        <div class="metric-card"><div class="m-label">Tổng mã Kho</div><div class="m-value" id="sp_mTotal">—</div><div class="m-sub">Mã đã quét về kho</div></div>
+        <div class="metric-card"><div class="m-label">Tổng mã Shopee</div><div class="m-value" id="sp_mShopee">—</div><div class="m-sub">Từ 2 loại file đơn</div></div>
+        <div class="metric-card green"><div class="m-label">Đã về kho</div><div class="m-value" id="sp_mMatched">—</div><div class="m-sub">Khớp mã vận đơn</div></div>
+        <div class="metric-card pink"><div class="m-label">Tỷ lệ về kho</div><div class="m-value" id="sp_mRate">—</div><div class="m-sub">mã Shopee đã có ở Kho</div></div>
+      </div>
+      <div class="warn-chips" id="sp_warningArea"></div>
+    </div>
+
+    <div class="card">
+      <div class="section-label">Chỉ số đơn trả &amp; vận chuyển</div>
+      <div class="metrics-grid">
+        <div class="metric-card"><div class="m-label">Tổng giá trị đơn trả</div><div class="m-value" id="sp_mValue" style="font-size:18px">—</div><div class="m-sub">VND</div></div>
+        <div class="metric-card"><div class="m-label">ĐVVC trả nhiều nhất</div><div class="m-value" id="sp_mTopShip" style="font-size:14px;line-height:1.3">—</div><div class="m-sub" id="sp_mTopShipSub"></div></div>
+        <div class="metric-card"><div class="m-label">Sản phẩm trả nhiều nhất</div><div class="m-value" id="sp_mTopProd" style="font-size:12px;line-height:1.3">—</div><div class="m-sub" id="sp_mTopProdSub"></div></div>
+        <div class="metric-card red"><div class="m-label">Chưa về kho</div><div class="m-value" id="sp_mMissA">—</div><div class="m-sub">Shopee → không khớp Kho</div></div>
+        <div class="metric-card"><div class="m-label">Tỉnh/Thành trả nhiều nhất</div><div class="m-value" id="sp_mTopProv" style="font-size:14px;line-height:1.3">—</div><div class="m-sub" id="sp_mTopProvSub"></div></div>
+        <div class="metric-card"><div class="m-label">Hoàn tiền, không trả hàng</div><div class="m-value" id="sp_mRefundOnly">—</div><div class="m-sub">đã loại khỏi thất thoát</div></div>
+        <div class="metric-card"><div class="m-label">Kho chưa có chứng từ</div><div class="m-value" id="sp_mMissB">—</div><div class="m-sub">Kho → Shopee chưa báo</div></div>
+        <div class="metric-card red"><div class="m-label">Tồn ≥ 7 ngày</div><div class="m-value" id="sp_mOld">—</div><div class="m-sub">cần truy gấp</div></div>
+      </div>
+    </div>
+
+    <div class="charts-2">
+      <div class="chart-card">
+        <h3>Tỷ lệ khớp / lệch theo từng gian hàng</h3>
+        <div id="sp_shopBars"></div>
+      </div>
+      <div class="chart-card">
+        <h3>Phân bố đơn vị vận chuyển</h3>
+        <div style="height: 220px; position: relative; display: flex; align-items: center; justify-content: center;">
+          <canvas id="sp_chartShip" style="max-height: 220px;"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="charts-2">
+      <div class="chart-card">
+        <h3>Top 5 sản phẩm bị trả nhiều nhất</h3>
+        <div style="height: 200px; position: relative;">
+          <canvas id="sp_chartProd" style="max-height: 200px;"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <h3>Top 5 tỉnh/thành trả nhiều nhất</h3>
+        <div style="height: 200px; position: relative;">
+          <canvas id="sp_chartProv" style="max-height: 200px;"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="charts-2">
+      <div class="chart-card">
+        <h3>Hình thức thanh toán của đơn trả</h3>
+        <div class="bar-horiz" id="sp_payChart" style="margin-top:6px"></div>
+      </div>
+      <div class="chart-card">
+        <h3>Cơ cấu mã trong Kho chưa khớp</h3>
+        <div class="bar-horiz" id="sp_pfxChart" style="margin-top:6px"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="tab-row">
+        <button class="tab-btn active" id="sp_btn-tabA" onclick="SP.switchTab('tabA',this)">Chưa về kho <span id="sp_cntA" style="font-weight:500;opacity:0.7"></span></button>
+        <button class="tab-btn" id="sp_btn-tabB" onclick="SP.switchTab('tabB',this)">Kho chưa có chứng từ <span id="sp_cntB" style="font-weight:500;opacity:0.7"></span></button>
+      </div>
+
+      <div class="tab-pane active" id="sp_tabA">
+        <div class="table-header">
+          <div class="table-header-left">
+            <div class="section-label" style="margin:0">Mã Shopee không tìm thấy trong dữ liệu Kho</div>
+            <input type="text" class="table-search" id="sp_searchA" placeholder="Tìm theo mã vận đơn / gian hàng..." oninput="SP.handleSearchA()">
+          </div>
+          <button class="btn-export" id="sp_btnExportA" onclick="SP.exportExcelA()" style="display:none">
+            <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Xuất Excel đơn chưa về kho
+          </button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 50px;">STT</th>
+                <th>Gian hàng</th>
+                <th>Phân loại</th>
+                <th>Mã vận đơn</th>
+                <th>Mã đơn hàng</th>
+                <th>Tên sản phẩm</th>
+                <th>Tỉnh/Thành</th>
+              </tr>
+            </thead>
+            <tbody id="sp_tbodyA"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="sp_pagerA"></div>
+      </div>
+
+      <div class="tab-pane" id="sp_tabB">
+        <div class="table-header">
+          <div class="table-header-left">
+            <div class="section-label" style="margin:0">Mã đã về kho nhưng Shopee chưa ghi nhận đơn trả</div>
+            <input type="text" class="table-search" id="sp_searchB" placeholder="Tìm theo mã vận đơn..." oninput="SP.handleSearchB()">
+          </div>
+          <button class="btn-export" onclick="SP.exportExcelB()">
+            <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Xuất báo cáo Excel
+          </button>
+        </div>
+        <div class="info-box">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span>
+            Kho quét chung mọi sàn nên danh sách này có thể lẫn hàng trả TikTok. Cột <b>Nghi thuộc sàn</b> đoán theo tiền tố mã: <code>SPXVN…</code> và <code>GY…</code> gần như chắc chắn là Shopee, còn J&amp;T / VNGH / VTPVN thì cả hai sàn đều dùng. Cột <b>Ngày đối soát</b> giữ nguyên nếu bạn tải lại file xuất cũ vào ô Kho.
+          </span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 50px;">STT</th>
+                <th>Mã vận đơn</th>
+                <th>Nghi thuộc sàn</th>
+                <th>Ngày đối soát</th>
+                <th>Số ngày tồn</th>
+                <th>Trạng thái</th>
+              </tr>
+            </thead>
+            <tbody id="sp_tbodyB"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="sp_pagerB"></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="plat-pane" id="pane_tt">
+<div class="container">
+  <div class="card">
+    <div class="card-title">
+      <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Cấu hình và Tải tệp dữ liệu
+    </div>
+    <div class="upload-grid">
+      <div>
+        <div class="col-label">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          File từ TikTok Shop
+          <span class="col-badge">Nhiều tệp</span>
+        </div>
+        <div class="drop-zone" id="tt_zone1" onclick="document.getElementById('tt_inp1').click()">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+          <div class="drop-zone-text">Kéo thả tệp tin vào đây</div>
+          <div class="drop-zone-hint">Báo cáo Giao thất bại + Trả hàng hoàn tiền</div>
+          <div class="drop-zone-hint accent">Tên file nên chứa tên Shop để tự nhận diện</div>
+        </div>
+        <input type="file" id="tt_inp1" accept=".xlsx,.xls" multiple>
+        <div class="file-list" id="tt_list1"></div>
+      </div>
+      <div>
+        <div class="col-label">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
+          File từ hệ thống Kho / Đối soát
+          <span class="col-badge b2">Nhiều tệp</span>
+        </div>
+        <div class="drop-zone" id="tt_zone2" onclick="document.getElementById('tt_inp2').click()">
+          <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+          <div class="drop-zone-text">Kéo thả tệp tin vào đây</div>
+          <div class="drop-zone-hint">Nhận diện theo cột: Mã vận đơn, Code, Tracking ID</div>
+          <div class="drop-zone-hint b">Có thể tải lại file xuất cũ — ngày đối soát sẽ được giữ nguyên</div>
+        </div>
+        <input type="file" id="tt_inp2" accept=".xlsx,.xls,.csv" multiple>
+        <div class="file-list" id="tt_list2"></div>
+      </div>
+    </div>
+    <div class="filter-row">
+      <label class="filter-chk">
+        <input type="checkbox" id="tt_chkFilterOther" checked>
+        <span>Loại mã không thuộc TikTok khỏi đối soát</span>
+      </label>
+      <span class="filter-hint">Bỏ mã <code>SPXVN…</code> (SPX Express) và <code>GY…</code> 8 ký tự (GHN) — hai loại này chỉ xuất hiện ở đơn Shopee</span>
+    </div>
+    <div class="action-row">
+      <button class="btn-main" id="tt_btnRun" disabled onclick="TT.runMatch()">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Tiến hành đối soát
+      </button>
+      <div class="file-summary" id="tt_fileSummary">Chưa có file nào được chọn</div>
+    </div>
+    <div class="progress-bar" id="tt_pb"><div class="progress-fill" id="tt_pbFill"></div></div>
+  </div>
+
+  <div id="tt_results">
+    <div class="card">
+      <div class="section-label">Kết quả đối soát tổng quan</div>
+      <div class="metrics-grid">
+        <div class="metric-card"><div class="m-label">Tổng mã Kho</div><div class="m-value" id="tt_mTotal">—</div><div class="m-sub">Mã đã quét, sau lọc</div></div>
+        <div class="metric-card"><div class="m-label">Tổng mã TikTok</div><div class="m-value" id="tt_mTikTok">—</div><div class="m-sub">Từ báo cáo hoàn trả</div></div>
+        <div class="metric-card green"><div class="m-label">Khớp thành công</div><div class="m-value" id="tt_mMatched">—</div><div class="m-sub">Đã nhận diện đủ chứng từ</div></div>
+        <div class="metric-card pink"><div class="m-label">Tỷ lệ đối khớp</div><div class="m-value" id="tt_mRate">—</div><div class="m-sub">mã TikTok đã có ở Kho</div></div>
+      </div>
+      <div class="warn-chips" id="tt_warningArea"></div>
+    </div>
+
+    <div class="card">
+      <div class="section-label">Chỉ số hoàn trả & vận chuyển</div>
+      <div class="metrics-grid">
+        <div class="metric-card"><div class="m-label">Tổng giá trị hoàn trả</div><div class="m-value" id="tt_mRefund" style="font-size:18px">—</div><div class="m-sub">VND</div></div>
+        <div class="metric-card"><div class="m-label">Đơn vị giao nhiều trả nhất</div><div class="m-value" id="tt_mTopShip" style="font-size:14px;line-height:1.3">—</div><div class="m-sub" id="tt_mTopShipSub"></div></div>
+        <div class="metric-card"><div class="m-label">Sản phẩm trả nhiều nhất</div><div class="m-value" id="tt_mTopProd" style="font-size:12px;line-height:1.3">—</div><div class="m-sub" id="tt_mTopProdSub"></div></div>
+        <div class="metric-card red"><div class="m-label">Mã lệch chưa có ở Kho</div><div class="m-value" id="tt_mMissA">—</div><div class="m-sub">TikTok → không khớp Kho</div></div>
+        <div class="metric-card"><div class="m-label">Tỉnh/Thành trả nhiều nhất</div><div class="m-value" id="tt_mTopProv" style="font-size:14px;line-height:1.3">—</div><div class="m-sub" id="tt_mTopProvSub"></div></div>
+        <div class="metric-card"><div class="m-label">Mã đã lọc (sàn khác)</div><div class="m-value" id="tt_mFiltered">—</div><div class="m-sub" id="tt_mFilteredSub">SPXVN + GY…</div></div>
+        <div class="metric-card"><div class="m-label">Kho chưa có chứng từ</div><div class="m-value" id="tt_mMissB">—</div><div class="m-sub">Kho → TikTok chưa báo</div></div>
+        <div class="metric-card red"><div class="m-label">Tồn ≥ 7 ngày</div><div class="m-value" id="tt_mOld">—</div><div class="m-sub">cần truy gấp</div></div>
+      </div>
+    </div>
+
+    <div class="charts-2">
+      <div class="chart-card">
+        <h3>Tỷ lệ khớp / lệch theo từng gian hàng</h3>
+        <div id="tt_shopBars"></div>
+      </div>
+      <div class="chart-card">
+        <h3>Phân bố đơn vị vận chuyển <span style="font-weight:500;opacity:.65;font-size:11px">— chỉ tính file Giao KTC (file Trả hàng không có cột ĐVVC)</span></h3>
+        <div style="height: 220px; position: relative; display: flex; align-items: center; justify-content: center;">
+          <canvas id="tt_chartShip" style="max-height: 220px;"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="charts-2">
+      <div class="chart-card">
+        <h3>Top 5 sản phẩm hoàn trả cao nhất</h3>
+        <div style="height: 200px; position: relative;">
+          <canvas id="tt_chartProd" style="max-height: 200px;"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <h3>Hình thức thanh toán của đơn hoàn</h3>
+        <div class="bar-horiz" id="tt_payChart" style="margin-top:6px"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="tab-row">
+        <button class="tab-btn active" id="tt_btn-tabA" onclick="TT.switchTab('tabA',this)">Thiếu trong đối soát <span id="tt_cntA" style="font-weight:500;opacity:0.7"></span></button>
+        <button class="tab-btn" id="tt_btn-tabB" onclick="TT.switchTab('tabB',this)">Chưa có chứng từ TikTok <span id="tt_cntB" style="font-weight:500;opacity:0.7"></span></button>
+      </div>
+
+      <!-- Tab A -->
+      <div class="tab-pane active" id="tt_tabA">
+        <div class="table-header">
+          <div class="table-header-left">
+            <div class="section-label" style="margin:0">Mã TikTok không tìm thấy trong dữ liệu Kho</div>
+            <input type="text" class="table-search" id="tt_searchA" placeholder="Tìm theo mã vận đơn..." oninput="TT.handleSearchA()">
+          </div>
+          <button class="btn-export" id="tt_btnExportA" onclick="TT.exportExcelA()" style="display:none">
+            <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Xuất Excel đối soát lệch
+          </button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 50px;">STT</th>
+                <th>Gian hàng</th>
+                <th>Phân loại</th>
+                <th>Mã vận đơn (Tracking ID)</th>
+              </tr>
+            </thead>
+            <tbody id="tt_tbodyA"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="tt_pagerA"></div>
+      </div>
+
+      <!-- Tab B -->
+      <div class="tab-pane" id="tt_tabB">
+        <div class="table-header">
+          <div class="table-header-left">
+            <div class="section-label" style="margin:0">Mã đơn trong Kho nhưng TikTok chưa báo hoàn trả</div>
+            <input type="text" class="table-search" id="tt_searchB" placeholder="Tìm theo mã vận đơn..." oninput="TT.handleSearchB()">
+          </div>
+          <button class="btn-export" onclick="TT.exportExcelB()">
+            <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Xuất báo cáo Excel
+          </button>
+        </div>
+        <div class="info-box">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span>
+            Cột <b>Ngày đối soát</b> ghi lại lần đầu tiên mã này xuất hiện lệch. Nếu bạn tải lại file xuất cũ vào ô Kho ở lần sau, ngày cũ sẽ được <b>giữ nguyên</b> — không bị ghi đè. Mã nào xuất hiện <b>≥ 7 ngày</b> sẽ được đánh dấu đỏ để dễ nhận biết. <br><b>File Excel xuất ra sẽ nhiều dòng hơn bảng hiển thị</b>: nó ghi thêm cả mã đã bị bộ lọc loại (SPXVN / GY…) kèm cột <b>Nghi thuộc sàn</b>, để tool Shopee nạp lại dùng chung được.
+          </span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 50px;">STT</th>
+                <th>Mã vận đơn thực tế</th>
+                <th>Ngày đối soát</th>
+                <th>Số ngày tồn</th>
+                <th>Trạng thái</th>
+              </tr>
+            </thead>
+            <tbody id="tt_tbodyB"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="tt_pagerB"></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+var SP = (function () {
+var _PFX = 'sp_';
+function _$(id) {
+  id = String(id);
+  return document.getElementById(id.indexOf(_PFX) === 0 ? id : _PFX + id);
+}
+var filesA = [], filesB = [], filesK = [];
+var shipChart = null, prodChart = null, provChart = null;
+var resultMissA = [], resultMissB = [];
+var searchStrA = "", searchStrB = "";
+var pageA = 1, pageB = 1;
+const pageSize = 10;
+const SHOPEE_COLORS = ['#ee4d2d','#f69113','#1d9e75','#3b82f6','#a855f7','#b45309','#ef4444','#71717a'];
+
+function fmtNum(n) { return Math.round(n).toLocaleString('vi-VN'); }
+function fmtSize(b) { if(b<1024)return b+'B'; if(b<1048576)return (b/1024).toFixed(0)+'KB'; return (b/1048576).toFixed(1)+'MB'; }
+
+/* ---------- S5 + lõi: chuẩn hóa và lọc mã ---------- */
+function sanitizeTrackingId(val) {
+  if (!val) return '';
+  return String(val).trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+// Mã vận đơn thật không chứa khoảng trắng -> chặn dòng mô tả / dòng tiêu đề phụ.
+function isLikelyRealTrackingId(raw) {
+  if (!raw) return false;
+  var s = String(raw).trim();
+  if (s.length < 3) return false;
+  if (/\s/.test(s)) return false;
+  return true;
+}
+// Chống mã 12-17 số bị đọc thành 1.23E+15.
+function cellToStr(cell) {
+  if (!cell) return '';
+  if (cell.t === 'n' || typeof cell.v === 'number') return String(Math.round(cell.v));
+  var v = String(cell.v === undefined ? '' : cell.v).trim();
+  if (/^\d[\d.]*[eE][+\-]?\d+$/.test(v)) return String(Math.round(parseFloat(v)));
+  return v;
+}
+function getCellStr(ws, r, c) { return cellToStr(ws[XLSX.utils.encode_cell({r:r, c:c})]); }
+
+/* ---------- Đoán sàn theo tiền tố mã ----------
+   Kho quét chung mọi sàn. SPXVN (SPX Express) và GY+6 (GHN mã ngắn) gần như
+   chỉ xuất hiện ở đơn Shopee. J&T 12 số, VNGH, VTPVN thì cả 2 sàn cùng dùng
+   nên không kết luận được.                                                  */
+function guessPlatform(cleanId) {
+  if (!cleanId) return 'Không rõ';
+  if (cleanId.indexOf('SPXVN') === 0) return 'Shopee';
+  if (/^GY[A-Z0-9]{6}$/.test(cleanId)) return 'Shopee';
+  if (/^\d{12}$/.test(cleanId)) return 'Dùng chung';
+  if (cleanId.indexOf('VNGH') === 0 || cleanId.indexOf('VTPVN') === 0) return 'Dùng chung';
+  return 'Không rõ';
+}
+function prefixLabel(cleanId) {
+  if (!cleanId) return 'Khác';
+  if (cleanId.indexOf('SPXVN') === 0) return 'SPXVN — SPX Express';
+  if (/^GY[A-Z0-9]{6}$/.test(cleanId)) return 'GY… — GHN mã ngắn';
+  if (/^\d{12}$/.test(cleanId)) return '12 số — J&T';
+  if (cleanId.indexOf('VNGH') === 0) return 'VNGH — GHN';
+  if (cleanId.indexOf('VTPVN') === 0) return 'VTPVN — Viettel Post';
+  return 'Khác';
+}
+
+/* ---------- S9: đọc tiền của Shopee ----------
+   Shopee ghi "135150.00", "240000.00" -> dấu chấm là THẬP PHÂN.
+   Ngược hẳn TikTok ("142.000₫" = 142 nghìn). Tuyệt đối không dùng chung hàm:
+   áp nhầm hàm TikTok lên Shopee sẽ cho 13.515.000, sai gấp 100 lần.          */
+function parseMoneyShopee(raw) {
+  if (raw === null || raw === undefined) return 0;
+  var s = String(raw).trim();
+  if (!s) return 0;
+  var neg = s.indexOf('-') >= 0;
+  s = s.replace(/[^\d.,]/g, '').replace(/,/g, ''); // dấu phẩy chỉ là ngăn cách nghìn
+  if (!s) return 0;
+  var n = parseFloat(s) || 0;
+  return neg ? -n : n;
+}
+
+/* ---------- S1 + lõi: dò cột theo từ khóa ----------
+   Trả về undefined (không phải 0) khi không thấy, để cột nằm ở vị trí A
+   không bị coi là falsy.                                                     */
+function findCol(hMap, kws, exclude) {
+  var keys = Object.keys(hMap);
+  for (var i = 0; i < kws.length; i++) {
+    var kw = kws[i].toLowerCase();
+    var exact = kw.charAt(0) === '=';          // '=code' -> phải khớp tuyệt đối
+    if (exact) kw = kw.slice(1);
+    for (var j = 0; j < keys.length; j++) {
+      var k = String(keys[j]).toLowerCase();
+      if (exact ? (k !== kw) : (k.indexOf(kw) < 0)) continue;
+      if (exclude && exclude.some(function(x){ return k.indexOf(x) >= 0; })) continue;
+      return hMap[keys[j]];
+    }
+  }
+  return undefined;
+}
+
+/* ---------- S8: gộp nhóm thanh toán ---------- */
+function normalizePay(raw) {
+  var s = String(raw || '').trim();
+  if (!s) return 'Không rõ';
+  var l = s.toLowerCase();
+  if (l.indexOf('thanh toán khi nhận hàng') >= 0 || l.indexOf('cash on delivery') >= 0 || l === 'cod')
+    return 'COD — thanh toán khi nhận hàng';
+  return s;
+}
+
+/* ---------- Tuổi tồn: hỗ trợ cả số serial của Excel ---------- */
+function daysSince(dateStr) {
+  if (dateStr === null || dateStr === undefined) return null;
+  var s = String(dateStr).trim();
+  if (!s) return null;
+  var d = null;
+  if (/^\d+(\.\d+)?$/.test(s)) {
+    var serial = parseFloat(s);
+    if (serial > 20000 && serial < 80000) d = new Date(Date.UTC(1899, 11, 30) + Math.floor(serial) * 86400000);
+  }
+  if (!d && s.indexOf('/') >= 0) {
+    var p = s.split('/');
+    if (p.length === 3) {
+      var dd = parseInt(p[0],10), mm = parseInt(p[1],10), yy = parseInt(p[2],10);
+      if (!isNaN(dd) && !isNaN(mm) && !isNaN(yy)) d = new Date(yy, mm-1, dd);
+    }
+  }
+  if (!d && s.indexOf('-') >= 0) d = new Date(s);
+  if (!d || isNaN(d.getTime())) return null;
+  var diff = Math.floor((new Date() - d) / 86400000);
+  return isNaN(diff) ? null : diff;
+}
+
+/* ---------- Đọc file: CSV đọc dạng text UTF-8, xlsx đọc nhị phân ---------- */
+function readWb(file) {
+  return new Promise(function(res, rej) {
+    var r = new FileReader();
+    var isCsv = file.name.toLowerCase().endsWith('.csv');
+    r.onload = function(e) {
+      try {
+        if (isCsv) res(XLSX.read(e.target.result, {type:'string', cellText:true}));
+        else res(XLSX.read(e.target.result, {type:'array', cellText:true}));
+      } catch(err) { rej(err); }
+    };
+    r.onerror = rej;
+    if (isCsv) r.readAsText(file, 'UTF-8');
+    else r.readAsArrayBuffer(file);
+  });
+}
+
+/* ---------- Dò dòng tiêu đề trong 10 dòng đầu ----------
+   File quét mã vạch có tiêu đề ở dòng 3 (dòng 1 là tên báo cáo, dòng 2 trống).
+   QUAN TRỌNG: file khiếu nại Shopee có cột TRÙNG TÊN ("Tỉnh/Thành phố" xuất
+   hiện 2 lần) -> chỉ ghi nhận lần xuất hiện ĐẦU TIÊN, vì cột sau là địa chỉ
+   lấy hàng hoàn trả và thường rỗng.                                          */
+function detectHeader(ws, range, kws) {
+  for (var hr = range.s.r; hr <= Math.min(range.s.r + 10, range.e.r); hr++) {
+    var m = {}, found = false;
+    for (var c = range.s.c; c <= range.e.c; c++) {
+      var v = getCellStr(ws, hr, c).trim();
+      if (!v) continue;
+      if (!(v in m)) m[v] = c;
+      var l = v.toLowerCase();
+      for (var i = 0; i < kws.length; i++) {
+        var kw = kws[i], ex = kw.charAt(0) === '=';
+        if (ex) kw = kw.slice(1);
+        if (ex ? (l === kw) : (l.indexOf(kw) >= 0)) { found = true; break; }
+      }
+    }
+    if (found) return { headerRow: hr, hMap: m };
+  }
+  return { headerRow: range.s.r, hMap: {} };
+}
+
+function progress(pct) {
+  var pb = _$('pb'), pf = _$('pbFill');
+  pb.style.display = 'block'; pf.style.width = pct + '%';
+}
+function yieldThread() { return new Promise(function(r){ setTimeout(r, 10); }); }
+
+/* ---------- Quản lý danh sách file ---------- */
+function parseShopName(fname) {
+  var s = fname.replace(/\.[^.]+$/, '');
+  s = s.replace(/[_\-]+/g, ' ').trim();
+  s = s.replace(/\s*\d{2,4}[\s\-\/]\d{1,2}([\s\-\/]\d{1,4})?\s*$/, '').trim();
+  return s || fname;
+}
+function zoneArr(z) { return z === 1 ? filesA : (z === 2 ? filesB : filesK); }
+
+function editShopName(z, idx) {
+  var arr = zoneArr(z);
+  var oldName = arr[idx].customShopName || parseShopName(arr[idx].name);
+  var newName = prompt('Nhập tên gian hàng:', oldName);
+  if (newName !== null && newName.trim() !== "") { arr[idx].customShopName = newName.trim(); renderAll(); }
+}
+function removeFile(z, i, e) { e.stopPropagation(); zoneArr(z).splice(i, 1); renderAll(); }
+function addFiles(z, newFiles) {
+  var arr = zoneArr(z);
+  Array.from(newFiles).forEach(function(f) {
+    if (!arr.find(function(x){ return x.name === f.name; })) arr.push(f);
+  });
+  renderAll();
+}
+function renderFileList(listId, arr, z) {
+  var el = _$(listId);
+  if (!arr.length) { el.innerHTML = ''; return; }
+  el.innerHTML = arr.map(function(f, i) {
+    var shop = (z === 1 || z === 2) ? (f.customShopName || parseShopName(f.name)) : '';
+    return '<div class="file-item">' +
+      '<svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>' +
+      '<span class="file-item-name">' + f.name + '</span>' +
+      ((z === 1 || z === 2) ? '<span class="file-item-shop" title="Bấm để đổi tên gian hàng" onclick="SP.editShopName(' + z + ',' + i + ')">🏷️ ' + shop + '</span>' : '') +
+      '<span class="file-item-type">' + fmtSize(f.size) + '</span>' +
+      '<button class="file-item-del" onclick="SP.removeFile(' + z + ',' + i + ',event)">' +
+        '<svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
+      '</button></div>';
+  }).join('');
+}
+function renderAll() {
+  renderFileList('list1', filesA, 1);
+  renderFileList('list2', filesB, 2);
+  renderFileList('list3', filesK, 3);
+  _$('btnRun').disabled = !((filesA.length + filesB.length) > 0 && filesK.length > 0);
+  var s = [];
+  if (filesA.length) s.push(filesA.length + ' file đơn hàng');
+  if (filesB.length) s.push(filesB.length + ' file khiếu nại');
+  if (filesK.length) s.push(filesK.length + ' file kho');
+  _$('fileSummary').textContent = s.length ? s.join(', ') : 'Chưa có file nào được chọn';
+}
+['zone1','zone2','zone3'].forEach(function(zId, zi) {
+  var z = _$(zId), inp = _$('inp' + (zi+1));
+  z.addEventListener('dragover', function(e){ e.preventDefault(); z.classList.add('dragover'); });
+  z.addEventListener('dragleave', function(){ z.classList.remove('dragover'); });
+  z.addEventListener('drop', function(e){ e.preventDefault(); z.classList.remove('dragover'); addFiles(zi+1, e.dataTransfer.files); });
+  inp.onchange = function(e){ addFiles(zi+1, e.target.files); inp.value=''; };
+});
+
+/* =================== ĐỐI SOÁT =================== */
+async function runMatch() {
+  _$('results').style.display = 'none';
+  progress(2);
+
+  var skipRefundOnly = _$('chkSkipRefundOnly').checked;
+
+  /* ---- S3: đọc file Kho ĐÚNG CỘT, không quét mù mọi ô ----
+     Bản cũ lấy mọi ô dài hơn 5 ký tự làm mã hợp lệ. File quét mã vạch có cột
+     Timestamp 13 chữ số (rất giống mã J&T 12 số) và cột Date -> tổng mã phồng
+     lên gấp mấy lần.                                                          */
+  var khoIds = new Set(), originalKhoIds = new Map(), existingDates = new Map();
+  var today = new Date().toLocaleDateString('vi-VN');
+
+  for (var ki = 0; ki < filesK.length; ki++) {
+    var wbK = await readWb(filesK[ki]);
+    var wsK = wbK.Sheets[wbK.SheetNames[0]];
+    var rgK = XLSX.utils.decode_range(wsK['!ref'] || 'A1');
+    var hK = detectHeader(wsK, rgK, ['mã vận đơn', '=code', 'tracking id', 'vận đơn']);
+    var idIdx = findCol(hK.hMap, ['mã vận đơn', '=code', 'tracking id', 'vận đơn']);
+    var dateIdx = findCol(hK.hMap, ['ngày đối soát', 'ngay doi soat']);
+    if (idIdx === undefined) continue;
+
+    for (var rK = hK.headerRow + 1; rK <= rgK.e.r; rK++) {
+      var rawK = getCellStr(wsK, rK, idIdx);
+      var cleanK = sanitizeTrackingId(rawK);
+      if (!cleanK || cleanK.length <= 3 || !isLikelyRealTrackingId(rawK)) continue;
+      khoIds.add(cleanK);
+      if (!originalKhoIds.has(cleanK)) originalKhoIds.set(cleanK, rawK);
+      if (dateIdx !== undefined) {
+        var od = getCellStr(wsK, rK, dateIdx);
+        if (od && od.trim() && !existingDates.has(cleanK)) existingDates.set(cleanK, od.trim());
+      }
+    }
+    await yieldThread();
+    progress(2 + Math.round((ki+1)/filesK.length*18));
+  }
+
+  /* ---- Đọc 2 loại file Shopee ---- */
+  var records = [];           // giữ NGUYÊN cấp SKU để biểu đồ sản phẩm không bị hụt
+  var refundOnlyCount = 0;    // S2: hoàn tiền không có hàng trả về
+  var noTidCount = 0;
+  var allShopFiles = filesA.map(function(f){ return {f:f, kind:'don'}; })
+             .concat(filesB.map(function(f){ return {f:f, kind:'khieunai'}; }));
+
+  for (var fi = 0; fi < allShopFiles.length; fi++) {
+    var item = allShopFiles[fi], f = item.f, kind = item.kind;
+    var shop = f.customShopName || parseShopName(f.name);
+    var wb = await readWb(f);
+    var ws = wb.Sheets[wb.SheetNames[0]];
+    var rg = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+    var h = detectHeader(ws, rg, ['mã đơn hàng', 'mã vận đơn', 'tên sản phẩm', 'mã số khiếu nại']);
+    var hMap = h.hMap;
+
+    var tidIdx, dvvcIdx, amtIdx, amtAltIdx, phuongAnIdx, retStatusIdx;
+    if (kind === 'don') {
+      // S1: file đơn hàng -> hàng quay đầu giữ nguyên mã giao
+      tidIdx  = findCol(hMap, ['mã vận đơn', 'tracking'], ['kiện']);
+      dvvcIdx = findCol(hMap, ['đơn vị vận chuyển']);
+      amtIdx  = findCol(hMap, ['tổng giá trị đơn hàng', 'tổng giá trị']);
+    } else {
+      // S1: file khiếu nại -> BẮT BUỘC dùng cột mã vận đơn TRẢ HÀNG.
+      // Bản cũ lấy cột khớp đầu tiên nên vẫn trúng cột này, nhưng nếu Shopee
+      // đổi thứ tự cột thì sẽ trúng "Mã vận đơn giao hàng" -> sai nghiệp vụ.
+      tidIdx = findCol(hMap, ['mã vận đơn trả hàng', 'mã vận đơn trả', 'return tracking'], ['giao']);
+      if (tidIdx === undefined) tidIdx = findCol(hMap, ['mã vận đơn'], ['giao', 'kiện']);
+      // S7: ưu tiên ĐVVC chiều trả, rỗng thì mới lùi về chiều giao
+      dvvcIdx = findCol(hMap, ['đơn vị vận chuyển trả hàng'], []);
+      if (dvvcIdx === undefined) dvvcIdx = findCol(hMap, ['đơn vị vận chuyển']);
+      amtIdx  = findCol(hMap, ['tổng số tiền hoàn trả']);
+      amtAltIdx = findCol(hMap, ['tổng giá trị']);   // Shopee thường để 0 ở cột hoàn trả
+      phuongAnIdx  = findCol(hMap, ['phương án']);
+      retStatusIdx = findCol(hMap, ['trạng thái trả hàng']);
+    }
+    var dvvcGiaoIdx = findCol(hMap, ['đơn vị vận chuyển giao hàng', 'đơn vị vận chuyển'], ['trả']);
+    var oidIdx  = findCol(hMap, ['mã đơn hàng']);
+    var prodIdx = findCol(hMap, ['tên sản phẩm', 'product name']);
+    var provIdx = findCol(hMap, ['tỉnh/thành', 'province']);   // S10
+    var payIdx  = findCol(hMap, ['phương thức thanh toán', 'payment method']);
+    if (tidIdx === undefined) { await yieldThread(); continue; }
+
+    for (var r = h.headerRow + 1; r <= rg.e.r; r++) {
+      var rawTid = getCellStr(ws, r, tidIdx);
+      if (!isLikelyRealTrackingId(rawTid)) {
+        if (kind === 'khieunai') {
+          var pa = phuongAnIdx  !== undefined ? getCellStr(ws, r, phuongAnIdx).toLowerCase()  : '';
+          var rs = retStatusIdx !== undefined ? getCellStr(ws, r, retStatusIdx).toLowerCase() : '';
+          var hasRow = (oidIdx !== undefined && getCellStr(ws, r, oidIdx).trim() !== '');
+          if (hasRow) {
+            // S2: khách chỉ đòi hoàn tiền, không gửi hàng -> KHÔNG phải thất thoát
+            if (pa.indexOf('hoàn tiền ngay') >= 0 || rs === 'không') refundOnlyCount++;
+            else noTidCount++;
+          }
+        }
+        continue;
+      }
+      var cleanTid = sanitizeTrackingId(rawTid);
+      var dv = dvvcIdx !== undefined ? getCellStr(ws, r, dvvcIdx) : '';
+      if (!dv && dvvcGiaoIdx !== undefined) dv = getCellStr(ws, r, dvvcGiaoIdx);
+      records.push({
+        shop: shop, kind: kind, tid: rawTid, cleanTid: cleanTid,
+        oid:  oidIdx  !== undefined ? getCellStr(ws, r, oidIdx)  : '',
+        prod: prodIdx !== undefined ? getCellStr(ws, r, prodIdx) : '',
+        prov: provIdx !== undefined ? getCellStr(ws, r, provIdx) : '',
+        pay:  payIdx  !== undefined ? getCellStr(ws, r, payIdx)  : '',
+        dvvc: dv,
+        amt:  (function(){                                                   // S9
+                var v = amtIdx !== undefined ? parseMoneyShopee(getCellStr(ws, r, amtIdx)) : 0;
+                if (!v && amtAltIdx !== undefined) v = parseMoneyShopee(getCellStr(ws, r, amtAltIdx));
+                return v;
+              })()
+      });
+    }
+    await yieldThread();
+    progress(20 + Math.round((fi+1)/allShopFiles.length*55));
+  }
+
+  if (!skipRefundOnly) { noTidCount += refundOnlyCount; refundOnlyCount = 0; }
+
+  /* ---- S6: gom mã DUY NHẤT để đối soát, nhưng giữ mọi dòng cho biểu đồ ---- */
+  var shopeeIds = new Set(records.map(function(x){ return x.cleanTid; }));
+
+  var seen = new Set(), missA = [];
+  records.forEach(function(rec) {
+    if (!khoIds.has(rec.cleanTid) && !seen.has(rec.cleanTid)) { missA.push(rec); seen.add(rec.cleanTid); }
+  });
+
+  /* ---- S4: chiều ngược — mã đã về kho nhưng Shopee chưa ghi nhận ---- */
+  var missB = [];
+  khoIds.forEach(function(cleanId) {
+    if (!shopeeIds.has(cleanId)) {
+      missB.push({
+        id: originalKhoIds.get(cleanId) || cleanId,
+        cleanId: cleanId,
+        date: existingDates.has(cleanId) ? existingDates.get(cleanId) : today,
+        platform: guessPlatform(cleanId)
+      });
+    }
+  });
+
+  var matchCount = 0;
+  shopeeIds.forEach(function(id){ if (khoIds.has(id)) matchCount++; });
+  var rate = shopeeIds.size ? Math.round(matchCount/shopeeIds.size*100) : 0;
+
+  resultMissA = missA; resultMissB = missB;
+  pageA = 1; pageB = 1;
+  _$('searchA').value = '';
+  _$('searchB').value = '';
+  searchStrA = ''; searchStrB = '';
+
+  /* ---- Chỉ số ---- */
+  _$('mTotal').textContent   = fmtNum(khoIds.size);
+  _$('mShopee').textContent  = fmtNum(shopeeIds.size);
+  _$('mMatched').textContent = fmtNum(matchCount);
+  _$('mRate').textContent    = rate + '%';
+  _$('mMissA').textContent   = fmtNum(missA.length);
+  _$('mMissB').textContent   = fmtNum(missB.length);
+  _$('mRefundOnly').textContent = fmtNum(refundOnlyCount);
+
+  var oldCount = missB.filter(function(m){ return (daysSince(m.date) || 0) >= 7; }).length;
+  _$('mOld').textContent = fmtNum(oldCount);
+
+  _$('mValue').textContent = fmtNum(records.reduce(function(s,x){ return s+x.amt; }, 0)) + ' đ';
+
+  function topOf(arr) {
+    var m = {};
+    arr.forEach(function(v){ if (v) m[v] = (m[v]||0)+1; });
+    return Object.entries(m).sort(function(a,b){ return b[1]-a[1]; });
+  }
+  var shipSorted = topOf(records.map(function(x){ return x.dvvc; }));
+  var prodSorted = topOf(records.map(function(x){ return x.prod ? x.prod.substring(0,50) : ''; }));
+  var provSorted = topOf(records.map(function(x){ return x.prov; }));
+
+  function fillTop(sorted, idVal, idSub, unit, emptyMsg) {
+    if (sorted.length) {
+      _$(idVal).textContent = sorted[0][0].substring(0,40);
+      _$(idSub).textContent = fmtNum(sorted[0][1]) + ' ' + unit;
+    } else {
+      _$(idVal).textContent = '—';
+      _$(idSub).textContent = emptyMsg;
+    }
+  }
+  fillTop(shipSorted, 'mTopShip', 'mTopShipSub', 'đơn', 'file không có cột ĐVVC');
+  fillTop(prodSorted, 'mTopProd', 'mTopProdSub', 'đơn', 'file không có cột sản phẩm');
+  fillTop(provSorted, 'mTopProv', 'mTopProvSub', 'đơn', 'file không có cột Tỉnh/Thành');
+
+  /* ---- Cảnh báo ---- */
+  var warns = [];
+  if (rate < 90) warns.push({ok:false, text:rate+'% mã Shopee đã về kho — dưới ngưỡng 90%, còn '+fmtNum(missA.length)+' mã chưa thấy hàng'});
+  else warns.push({ok:true, text:rate+'% mã Shopee đã về kho — đạt yêu cầu'});
+
+  // Cảnh báo nhiễu đa sàn: kho quét chung nên missB có thể lẫn hàng TikTok
+  var shared = missB.filter(function(m){ return m.platform !== 'Shopee'; }).length;
+  if (missB.length) {
+    warns.push({ok:false, text:fmtNum(missB.length)+' mã đã về kho nhưng Shopee chưa ghi nhận'
+      + (oldCount ? ' — trong đó '+fmtNum(oldCount)+' mã tồn ≥ 7 ngày ⚠' : '')});
+    if (shared) warns.push({ok:false, text:'Trong đó '+fmtNum(shared)+' mã dùng chung (J&T / VNGH / VTPVN) — có thể là hàng trả TikTok, không phải Shopee'});
+  }
+  if (refundOnlyCount) warns.push({ok:true, text:'Đã loại '+fmtNum(refundOnlyCount)+' đơn hoàn tiền không có hàng trả về khỏi danh sách thất thoát'});
+  if (noTidCount) warns.push({ok:false, text:fmtNum(noTidCount)+' dòng khiếu nại thiếu mã vận đơn trả — không đối soát được'});
+  _$('warningArea').innerHTML = warns.map(function(w){
+    return '<span class="chip '+(w.ok?'chip-ok':'chip-warn')+'">'+(w.ok?'✓ ':'⚠ ')+w.text+'</span>';
+  }).join('');
+
+  /* ---- Thanh theo gian hàng ---- */
+  var shopMap = {};
+  records.forEach(function(x){
+    if (!shopMap[x.shop]) shopMap[x.shop] = {match:0, miss:0};
+    if (khoIds.has(x.cleanTid)) shopMap[x.shop].match++; else shopMap[x.shop].miss++;
+  });
+  _$('shopBars').innerHTML = Object.entries(shopMap)
+    .sort(function(a,b){ return (b[1].match+b[1].miss)-(a[1].match+a[1].miss); })
+    .map(function(e){
+      var s=e[0], d=e[1], tot=d.match+d.miss||1;
+      var mp=Math.round(d.match/tot*100), fp=100-mp;
+      return '<div class="shop-bar-row"><div class="shop-bar-label" title="'+s+'">'+s+'</div>'+
+        '<div class="shop-bar-track">'+
+        (d.match?'<div class="shop-bar-match" style="width:'+mp+'%">'+d.match+'</div>':'')+
+        (d.miss?'<div class="shop-bar-miss" style="width:'+fp+'%">'+d.miss+'</div>':'')+
+        '</div><div class="shop-bar-end" style="color:'+(d.miss?'var(--red)':'var(--green)')+'">'+
+        (d.miss?'✗ '+d.miss:'✓')+'</div></div>';
+    }).join('') || '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">Không có dữ liệu</div>';
+
+  /* ---- Biểu đồ ---- */
+  var labelColor = document.documentElement.getAttribute('data-theme') === 'dark' ? '#a1a1aa' : '#475569';
+  if (shipChart) shipChart.destroy();
+  if (shipSorted.length) {
+    shipChart = new Chart(_$('chartShip'), {
+      type: 'doughnut',
+      data: { labels: shipSorted.map(function(d){ return d[0]+' ('+d[1]+')'; }),
+              datasets: [{ data: shipSorted.map(function(d){ return d[1]; }), backgroundColor: SHOPEE_COLORS, borderWidth: 0 }] },
+      options: { responsive:true, maintainAspectRatio:false, cutout:'65%',
+                 plugins:{ legend:{ position:'right', labels:{ font:{size:10}, boxWidth:10, padding:6, color:labelColor } } } }
+    });
+  }
+  function barChart(ref, sorted, color) {
+    var top5 = sorted.slice(0,5);
+    if (!top5.length) return null;
+    return new Chart(_$(ref), {
+      type: 'bar',
+      data: { labels: top5.map(function(p){ return p[0].length>20 ? p[0].substring(0,20)+'…' : p[0]; }),
+              datasets: [{ data: top5.map(function(p){ return p[1]; }), backgroundColor: color, borderRadius: 4, borderWidth: 0 }] },
+      options: { indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+                 scales:{ x:{ticks:{font:{size:10},color:labelColor},grid:{display:false}},
+                          y:{ticks:{font:{size:10},color:labelColor},grid:{display:false}} } }
+    });
+  }
+  if (prodChart) prodChart.destroy();
+  prodChart = barChart('chartProd', prodSorted, '#ee4d2d');
+  if (provChart) provChart.destroy();
+  provChart = barChart('chartProv', provSorted, '#1d9e75');
+
+  /* ---- Thanh ngang: thanh toán + cơ cấu mã kho chưa khớp ---- */
+  function horizBars(elId, sorted, total, colors) {
+    var max = sorted.length ? sorted[0][1] : 1;
+    _$(elId).innerHTML = sorted.map(function(d, i) {
+      return '<div class="bar-row"><div class="bar-label" title="'+d[0]+'">'+d[0]+'</div>'+
+        '<div class="bar-track"><div class="bar-fill" style="width:'+Math.round(d[1]/max*100)+'%;background:'+colors[i%colors.length]+'"></div></div>'+
+        '<div class="bar-count">'+d[1]+' <span class="bar-pct">('+Math.round(d[1]/(total||1)*100)+'%)</span></div></div>';
+    }).join('') || '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">Không có dữ liệu</div>';
+  }
+  horizBars('payChart', topOf(records.map(function(x){ return normalizePay(x.pay); })), records.length, SHOPEE_COLORS);
+  horizBars('pfxChart', topOf(missB.map(function(m){ return prefixLabel(m.cleanId); })), missB.length, SHOPEE_COLORS);
+
+  renderTableA(); renderTableB();
+  progress(100);
+  setTimeout(function(){ _$('pb').style.display='none'; }, 400);
+  _$('results').style.display = 'block';
+  _$('results').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function applyChartTheme() {
+  var c = document.documentElement.getAttribute('data-theme') === 'dark' ? '#a1a1aa' : '#475569';
+  if (shipChart) { shipChart.options.plugins.legend.labels.color = c; shipChart.update(); }
+  [prodChart, provChart].forEach(function(ch) {
+    if (ch) { ch.options.scales.x.ticks.color = c; ch.options.scales.y.ticks.color = c; ch.update(); }
+  });
+}
+
+/* =================== BẢNG =================== */
+function handleSearchA() { searchStrA = _$('searchA').value.toLowerCase().trim(); pageA=1; renderTableA(); }
+function handleSearchB() { searchStrB = _$('searchB').value.toLowerCase().trim(); pageB=1; renderTableB(); }
+
+function renderTableA() {
+  var tbody = _$('tbodyA'), pager = _$('pagerA');
+  var filtered = resultMissA.filter(function(r){
+    return r.tid.toLowerCase().indexOf(searchStrA) >= 0 || r.shop.toLowerCase().indexOf(searchStrA) >= 0;
+  });
+  _$('cntA').textContent = '('+filtered.length+')';
+  _$('btnExportA').style.display = resultMissA.length ? 'inline-flex' : 'none';
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="7">✅ Tất cả mã Shopee đều đã có hàng về kho</td></tr>';
+    pager.innerHTML = ''; return;
+  }
+  var totalPages = Math.ceil(filtered.length/pageSize), start = (pageA-1)*pageSize;
+  tbody.innerHTML = filtered.slice(start, start+pageSize).map(function(r, i) {
+    return '<tr><td>'+(start+i+1)+'</td>'+
+      '<td><span class="shop-tag">'+r.shop+'</span></td>'+
+      '<td><span class="type-tag">'+(r.kind==='don'?'Đơn hàng':'Khiếu nại')+'</span></td>'+
+      '<td><code>'+r.tid+'</code></td>'+
+      '<td><code style="opacity:.7">'+(r.oid||'—')+'</code></td>'+
+      '<td style="max-width:220px;overflow:hidden;text-overflow:ellipsis">'+(r.prod||'—')+'</td>'+
+      '<td>'+(r.prov||'—')+'</td></tr>';
+  }).join('');
+  renderPager(pager, pageA, totalPages, function(p){ pageA=p; renderTableA(); });
+}
+
+function renderTableB() {
+  var tbody = _$('tbodyB'), pager = _$('pagerB');
+  var filtered = resultMissB.filter(function(m){ return m.id.toLowerCase().indexOf(searchStrB) >= 0; });
+  _$('cntB').textContent = '('+filtered.length+')';
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="6">✅ Mọi mã trong kho đều có chứng từ Shopee</td></tr>';
+    pager.innerHTML = ''; return;
+  }
+  var totalPages = Math.ceil(filtered.length/pageSize), start = (pageB-1)*pageSize;
+  tbody.innerHTML = filtered.slice(start, start+pageSize).map(function(m, i) {
+    var days = daysSince(m.date);
+    var isOld = days !== null && days >= 7;
+    var pf = m.platform === 'Shopee' ? '<span class="badge-new">Shopee</span>'
+           : (m.platform === 'Dùng chung' ? '<span class="badge-amber">Dùng chung</span>' : '<span class="type-tag">Không rõ</span>');
+    return '<tr><td>'+(start+i+1)+'</td>'+
+      '<td><code>'+m.id+'</code></td>'+
+      '<td>'+pf+'</td>'+
+      '<td>'+(isOld ? '<span class="badge-old">📅 '+m.date+'</span>' : '<span class="badge-new">📅 '+m.date+'</span>')+'</td>'+
+      '<td style="font-weight:700;color:'+(isOld?'var(--red)':'var(--text-secondary)')+'">'+(days===null?'—':days+' ngày')+'</td>'+
+      '<td>'+(isOld?'<span class="badge-red">⚠ Tồn lâu</span>':'<span class="badge-amber">Chưa có chứng từ</span>')+'</td></tr>';
+  }).join('');
+  renderPager(pager, pageB, totalPages, function(p){ pageB=p; renderTableB(); });
+}
+
+function renderPager(container, currentPage, totalPages, onPageChange) {
+  if (totalPages <= 1) { container.innerHTML = ''; return; }
+  var id = container.id;
+  window['pager_'+id] = onPageChange;
+  var go = "window['pager_"+id+"']";
+  var html = '<button class="page-btn" '+(currentPage===1?'disabled':'')+' onclick="'+go+'(1)">«</button>';
+  html += '<button class="page-btn" '+(currentPage===1?'disabled':'')+' onclick="'+go+'('+(currentPage-1)+')">‹</button>';
+  var s = Math.max(1, currentPage-2), e = Math.min(totalPages, currentPage+2);
+  for (var i=s; i<=e; i++) html += '<button class="page-btn '+(i===currentPage?'active':'')+'" onclick="'+go+'('+i+')">'+i+'</button>';
+  html += '<button class="page-btn" '+(currentPage===totalPages?'disabled':'')+' onclick="'+go+'('+(currentPage+1)+')">›</button>';
+  html += '<button class="page-btn" '+(currentPage===totalPages?'disabled':'')+' onclick="'+go+'('+totalPages+')">»</button>';
+  container.innerHTML = html;
+}
+
+function switchTab(paneId, btn) {
+  document.querySelectorAll('#pane_sp .tab-pane').forEach(function(p){ p.classList.remove('active'); });
+  document.querySelectorAll('#pane_sp .tab-btn').forEach(function(b){ b.classList.remove('active'); });
+  _$(paneId).classList.add('active');
+  btn.classList.add('active');
+}
+
+/* =================== XUẤT EXCEL =================== */
+// Ép cột mã về kiểu text, nếu không Excel sẽ đổi mã vận đơn thành số và làm
+// hỏng file khi nạp ngược vào tool ở kỳ sau.
+function forceTextCol(ws, colIdx) {
+  var ref = XLSX.utils.decode_range(ws['!ref']);
+  for (var r = ref.s.r+1; r <= ref.e.r; r++) {
+    var a = XLSX.utils.encode_cell({r:r, c:colIdx});
+    if (ws[a]) { ws[a].t = 's'; ws[a].z = '@'; }
+  }
+}
+function exportExcelA() {
+  if (!resultMissA.length) { alert('Không có mã nào để xuất!'); return; }
+  var rows = resultMissA.map(function(r, i) {
+    return { 'STT': i+1, 'Mã vận đơn': r.tid, 'Gian hàng': r.shop,
+             'Loại tệp': r.kind==='don' ? 'Đơn hàng (hủy / giao KTC)' : 'Khiếu nại trả hàng',
+             'Mã đơn hàng': r.oid || '', 'Tên sản phẩm': r.prod || '',
+             'Tỉnh/Thành': r.prov || '', 'Tổng giá trị': r.amt || 0, 'Ghi chú / Lý do': '' };
+  });
+  var ws = XLSX.utils.json_to_sheet(rows);
+  forceTextCol(ws, 1); forceTextCol(ws, 4);
+  ws['!cols'] = [{wch:6},{wch:24},{wch:22},{wch:26},{wch:20},{wch:40},{wch:18},{wch:14},{wch:30}];
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Shopee_chua_ve_kho');
+  XLSX.writeFile(wb, 'Shopee_chua_ve_kho_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
+function exportExcelB() {
+  if (!resultMissB.length) { alert('Không có mã nào để xuất!'); return; }
+  var rows = resultMissB.map(function(m, i) {
+    var days = daysSince(m.date);
+    return { 'STT': i+1, 'Mã vận đơn': m.id, 'Nghi thuộc sàn': m.platform,
+             'Ngày đối soát': m.date, 'Số ngày tồn': days !== null ? days : '',
+             'Trạng thái': (days !== null && days >= 7) ? '⚠ Tồn lâu (≥7 ngày)' : 'Chưa có chứng từ Shopee' };
+  });
+  var ws = XLSX.utils.json_to_sheet(rows);
+  forceTextCol(ws, 1);
+  ws['!cols'] = [{wch:6},{wch:24},{wch:16},{wch:16},{wch:13},{wch:30}];
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Kho_chua_chung_tu_Shopee');
+  XLSX.writeFile(wb, 'Kho_chua_co_chung_tu_shopee_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
+
+
+return { runMatch: runMatch, switchTab: switchTab, exportExcelA: exportExcelA, exportExcelB: exportExcelB, handleSearchA: handleSearchA, handleSearchB: handleSearchB, removeFile: removeFile, editShopName: editShopName, applyChartTheme: applyChartTheme };
+})();
+
+var TT = (function () {
+var _PFX = 'tt_';
+function _$(id) {
+  id = String(id);
+  return document.getElementById(id.indexOf(_PFX) === 0 ? id : _PFX + id);
+}
+var filesA = [], filesB = [];
+var shipChart = null, prodChart = null;
+var resultMissA = [], resultMissB = [], resultFiltered = [];
+var searchStrA = "", searchStrB = "";
+var pageA = 1, pageB = 1;
+const pageSize = 10;
+
+function fmtNum(n) { return Math.round(n).toLocaleString('vi-VN'); }
+function fmtSize(b) { if(b<1024)return b+'B'; if(b<1048576)return (b/1024).toFixed(0)+'KB'; return (b/1048576).toFixed(1)+'MB'; }
+
+function parseShopName(fname) {
+  var s = fname.replace(/\.[^.]+$/, '');
+  var m = s.match(/TIKTOK[_\s]+(.+)/i);
+  if (m) {
+    var rest = m[1].replace(/_/g, ' ').trim();
+    rest = rest.replace(/\s*\d{1,2}[\s\-]\d{1,2}\s*$/, '').trim();
+    return rest || m[1].replace(/_/g, ' ').trim();
+  }
+  var parts = s.split(/[_\-\s]+/);
+  return parts.slice(-2).join(' ').trim() || s;
+}
+
+function parseFileType(fname) {
+  var s = fname.toLowerCase();
+  if (s.includes('tiktok_chua_co_trong_kho') || s.includes('chua_co_trong_kho')) return 'exported';
+  if (s.includes('giao') || s.includes('failed') || s.includes('unsuccessful')) return 'giao';
+  return 'tra';
+}
+
+function readWb(file) {
+  return new Promise(function(res, rej) {
+    var r = new FileReader();
+    var isCsv = file.name.toLowerCase().endsWith('.csv');
+    r.onload = function(e) {
+      try {
+        if (isCsv) res(XLSX.read(e.target.result, {type:'string', cellText:true}));
+        else res(XLSX.read(e.target.result, {type:'array', cellText:true}));
+      } catch(err) { rej(err); }
+    };
+    r.onerror = rej;
+    if (isCsv) r.readAsText(file, 'UTF-8');
+    else r.readAsArrayBuffer(file);
+  });
+}
+
+function sanitizeTrackingId(val) {
+  if (!val) return '';
+  return String(val).trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+// ==== T2: nhận diện mã KHÔNG thuộc TikTok =============================
+// Kiểm chứng trên dữ liệu thật: 360 mã SPXVN + 131 mã GY… nằm trong backlog
+// nhưng 0/108 mã chứng từ TikTok thuộc hai dạng này.
+//   SPXVN…  = SPX Express, chỉ giao đơn Shopee
+//   GY + 6  = Giao Hàng Nhanh dạng mã ngắn, TikTok đang dùng dạng VNGH…
+// Lưu ý: J&T (12 số), VNGH…, VTPVN… dùng chung cả 2 sàn -> KHÔNG lọc.
+function isOtherPlatformId(cleanId) {
+  if (!cleanId) return false;
+  if (cleanId.indexOf('SPXVN') === 0) return true;
+  if (/^GY[A-Z0-9]{6}$/.test(cleanId)) return true;
+  return false;
+}
+
+// Đoán sàn theo tiền tố, dùng khi ghi backlog để tool Shopee đọc lại được.
+function guessPlatform(cleanId) {
+  if (!cleanId) return 'Không rõ';
+  if (cleanId.indexOf('SPXVN') === 0) return 'Shopee';
+  if (/^GY[A-Z0-9]{6}$/.test(cleanId)) return 'Shopee';
+  if (/^\d{12}$/.test(cleanId)) return 'Dùng chung';
+  if (cleanId.indexOf('VNGH') === 0 || cleanId.indexOf('VTPVN') === 0) return 'Dùng chung';
+  return 'Không rõ';
+}
+
+// ==== T3: đọc tiền của TikTok =========================================
+// File Giao KTC ghi số thuần "50000"; file Trả hàng ghi "142.000₫".
+// Quy tắc: nhóm cuối dài đúng 3 chữ số -> dấu chấm là ngăn cách nghìn;
+// dài 1-2 chữ số -> là phần thập phân. Nhờ vậy "50000.00" vẫn ra 50000.
+function parseMoneyTikTok(raw) {
+  if (raw === null || raw === undefined) return 0;
+  var s = String(raw).trim();
+  if (!s) return 0;
+  var neg = s.indexOf('-') >= 0;
+  s = s.replace(/[^\d.,]/g, '');
+  if (!s) return 0;
+  s = s.replace(/,/g, '.');
+  var parts = s.split('.').filter(function(p){ return p !== ''; });
+  if (!parts.length) return 0;
+  var n;
+  if (parts.length === 1) {
+    n = parseFloat(parts[0]) || 0;
+  } else {
+    var last = parts[parts.length - 1];
+    if (last.length === 3) n = parseFloat(parts.join('')) || 0;
+    else n = parseFloat(parts.slice(0, -1).join('') + '.' + last) || 0;
+  }
+  return neg ? -n : n;
+}
+
+// ==== T5 + T11: dò cột theo từ khóa, không khớp cứng ==================
+// Trả về undefined (không phải 0) khi không tìm thấy, để cột nằm ở vị trí
+// A (index 0) không bị coi là falsy.
+function findCol(hMap, kws, exclude) {
+  var keys = Object.keys(hMap);
+  for (var i = 0; i < kws.length; i++) {
+    var kw = kws[i].toLowerCase();
+    for (var j = 0; j < keys.length; j++) {
+      var k = String(keys[j]).toLowerCase();
+      if (k.indexOf(kw) < 0) continue;
+      if (exclude && exclude.some(function(x){ return k.indexOf(x) >= 0; })) continue;
+      return hMap[keys[j]];
+    }
+  }
+  return undefined;
+}
+
+// ==== T6: gộp nhóm thanh toán =========================================
+// File Giao KTC ghi tiếng Việt, file Trả hàng ghi tiếng Anh -> cùng nghĩa
+// COD nhưng đang bị đếm thành 2 nhóm.
+function normalizePay(raw) {
+  var s = String(raw || '').trim();
+  if (!s) return 'Không rõ';
+  var l = s.toLowerCase();
+  if (l.indexOf('cash on delivery') >= 0 || l.indexOf('thanh toán khi') >= 0 || l === 'cod')
+    return 'COD — thanh toán khi nhận hàng';
+  return s;
+}
+
+// FIX: Một số file TikTok (VD: Giao không thành công) chèn 1 dòng MÔ TẢ ngay sau
+// dòng tiêu đề, dạng câu văn ("The order's tracking number."). Dòng này có khoảng
+// trắng và không phải mã vận đơn thật -> phải loại bỏ trước khi đối soát.
+function isLikelyRealTrackingId(raw) {
+  if (!raw) return false;
+  var s = String(raw).trim();
+  if (s.length < 3) return false;
+  if (/\s/.test(s)) return false; // mã vận đơn thật không chứa khoảng trắng
+  return true;
+}
+
+function cellToStr(cell) {
+  if (!cell) return '';
+  if (cell.t === 'n' || typeof cell.v === 'number') return String(Math.round(cell.v));
+  var v = String(cell.v || '').trim();
+  if (/^\d[\d.]*[eE][+\-]?\d+$/.test(v)) return String(Math.round(parseFloat(v)));
+  return v;
+}
+
+function getCellStr(ws, r, c) {
+  var addr = XLSX.utils.encode_cell({r:r, c:c});
+  return cellToStr(ws[addr]);
+}
+
+function progress(pct) {
+  var pb = _$('pb'), pf = _$('pbFill');
+  pb.style.display = 'block'; pf.style.width = pct + '%';
+}
+
+// Tính số ngày chênh lệch từ ngày đối soát đến hôm nay
+// T9: hỗ trợ dd/mm/yyyy, yyyy-mm-dd, VÀ số serial của Excel.
+// Nếu ai mở file backlog bằng Excel rồi bấm lưu, cột ngày dễ bị đổi thành
+// số serial (vd 46265). Không xử lý thì toàn bộ tuổi tồn reset về 0.
+function daysSince(dateStr) {
+  if (dateStr === null || dateStr === undefined) return null;
+  var s = String(dateStr).trim();
+  if (!s) return null;
+  var d = null;
+
+  if (/^\d+(\.\d+)?$/.test(s)) {
+    var serial = parseFloat(s);
+    if (serial > 20000 && serial < 80000) {
+      d = new Date(Date.UTC(1899, 11, 30) + Math.floor(serial) * 86400000);
+    }
+  }
+  if (!d && s.indexOf('/') >= 0) {
+    var p = s.split('/');
+    if (p.length === 3) {
+      var dd = parseInt(p[0], 10), mm = parseInt(p[1], 10), yy = parseInt(p[2], 10);
+      if (!isNaN(dd) && !isNaN(mm) && !isNaN(yy)) d = new Date(yy, mm - 1, dd);
+    }
+  }
+  if (!d && s.indexOf('-') >= 0) d = new Date(s);
+
+  if (!d || isNaN(d.getTime())) return null;
+  var diff = Math.floor((new Date() - d) / 86400000);
+  return isNaN(diff) ? null : diff;
+}
+
+function editShopName(idx) {
+  const oldName = filesA[idx].customShopName || parseShopName(filesA[idx].name);
+  const newName = prompt('Nhập tên gian hàng mới:', oldName);
+  if (newName !== null && newName.trim() !== "") {
+    filesA[idx].customShopName = newName.trim();
+    renderAll();
+  }
+}
+
+function renderFileList(listId, arr, zone) {
+  var el = _$(listId);
+  if (!arr.length) { el.innerHTML = ''; return; }
+  el.innerHTML = arr.map(function(f, i) {
+    var shop = zone === 1 ? (f.customShopName || parseShopName(f.name)) : '';
+    var type = zone === 1 ? (parseFileType(f.name) === 'giao' ? 'Giao KTC' : parseFileType(f.name) === 'exported' ? 'Xuất lại' : 'Trả hàng') : '';
+    return '<div class="file-item">' +
+      '<svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>' +
+      '<span class="file-item-name">' + f.name + '</span>' +
+      (zone === 1 ? `<span class="file-item-shop" title="Bấm để đổi tên gian hàng" onclick="TT.editShopName(${i})">🏷️ ${shop}</span><span class="file-item-type">${type}</span>` : '') +
+      '<span class="file-item-type">' + fmtSize(f.size) + '</span>' +
+      '<button class="file-item-del" onclick="TT.removeFile(' + zone + ',' + i + ',event)">' +
+        '<svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
+      '</button></div>';
+  }).join('');
+}
+
+function removeFile(zone, i, e) {
+  e.stopPropagation();
+  if (zone === 1) filesA.splice(i, 1); else filesB.splice(i, 1);
+  renderAll();
+}
+
+function addFiles(zone, newFiles) {
+  var arr = Array.from(newFiles);
+  if (zone === 1) arr.forEach(function(f) { if (!filesA.find(function(x){return x.name===f.name;})) filesA.push(f); });
+  else arr.forEach(function(f) { if (!filesB.find(function(x){return x.name===f.name;})) filesB.push(f); });
+  renderAll();
+}
+
+function renderAll() {
+  renderFileList('list1', filesA, 1);
+  renderFileList('list2', filesB, 2);
+  _$('btnRun').disabled = !(filesA.length > 0 && filesB.length > 0);
+  var s = '';
+  if (filesA.length) s += filesA.length + ' file TikTok';
+  if (filesB.length) s += (s ? ', ' : '') + filesB.length + ' file đối soát';
+  _$('fileSummary').textContent = s || 'Chưa có file nào được chọn';
+}
+
+['zone1','zone2'].forEach(function(zId, zi) {
+  var z = _$(zId);
+  var inp = _$('inp' + (zi+1));
+  z.addEventListener('dragover', function(e){e.preventDefault();z.classList.add('dragover');});
+  z.addEventListener('dragleave', function(){z.classList.remove('dragover');});
+  z.addEventListener('drop', function(e){e.preventDefault();z.classList.remove('dragover');addFiles(zi+1,e.dataTransfer.files);});
+  inp.onchange = function(e){addFiles(zi+1,e.target.files);inp.value='';};
+});
+
+function yieldThread() { return new Promise(resolve => setTimeout(resolve, 10)); }
+
+async function runMatch() {
+  _$('results').style.display = 'none';
+  progress(2);
+
+  var doiSoatIds = new Set();
+  var originalDoiSoatIds = new Map();
+  // KEY MỚI: Lưu ngày đối soát cũ từ file kho (nếu có)
+  var existingDates = new Map(); // cleanId -> ngày đối soát cũ
+  var filterOther = _$('chkFilterOther').checked; // T2
+  var filteredIds = new Set();   // T2: mã bị loại vì thuộc sàn khác
+  // Mã bị lọc VẪN là hàng đã về kho thật -> phải giữ lại để ghi vào backlog,
+  // nếu không tool Shopee sẽ mất sạch mã SPXVN/GY khi dùng chung file này.
+  var filteredBacklog = new Map();
+
+  var today = new Date().toLocaleDateString('vi-VN'); // dd/mm/yyyy
+
+  for (var di = 0; di < filesB.length; di++) {
+    var wbDS = await readWb(filesB[di]);
+    var wsDS = wbDS.Sheets[wbDS.SheetNames[0]];
+    var rangeDS = XLSX.utils.decode_range(wsDS['!ref'] || 'A1');
+
+    var hRowDS = rangeDS.s.r;
+    var hColDS = 0;
+    var dateColDS = -1; // Cột "Ngày đối soát" nếu có
+
+    outer: for (var hr = rangeDS.s.r; hr <= Math.min(rangeDS.s.r+10, rangeDS.e.r); hr++) {
+      for (var hc = rangeDS.s.c; hc <= rangeDS.e.c; hc++) {
+        var hv = getCellStr(wsDS, hr, hc).toLowerCase();
+        if (hv.includes('mã vận đơn') || hv === 'code' || hv.includes('tracking') || hv.includes('vận đơn')) {
+          hRowDS = hr; hColDS = hc;
+          // Quét thêm để tìm cột Ngày đối soát trên cùng dòng tiêu đề
+          for (var sc = rangeDS.s.c; sc <= rangeDS.e.c; sc++) {
+            var sv = getCellStr(wsDS, hr, sc).toLowerCase();
+            if (sv.includes('ngày đối soát') || sv.includes('ngay doi soat')) {
+              dateColDS = sc;
+            }
+          }
+          break outer;
+        }
+      }
+    }
+
+    for (var r2 = hRowDS+1; r2 <= rangeDS.e.r; r2++) {
+      var rawVal = getCellStr(wsDS, r2, hColDS);
+      var cleanVal = sanitizeTrackingId(rawVal);
+      if (cleanVal && cleanVal.length > 3 && isLikelyRealTrackingId(rawVal)) {
+        if (filterOther && isOtherPlatformId(cleanVal)) {
+          filteredIds.add(cleanVal);
+          if (!filteredBacklog.has(cleanVal)) {
+            var fDate = (dateColDS >= 0) ? getCellStr(wsDS, r2, dateColDS).trim() : '';
+            filteredBacklog.set(cleanVal, { id: rawVal, cleanId: cleanVal, date: fDate || today });
+          }
+          continue;
+        }
+        doiSoatIds.add(cleanVal);
+        originalDoiSoatIds.set(cleanVal, rawVal);
+        // Nếu tìm thấy cột ngày, lưu lại ngày cũ
+        if (dateColDS >= 0) {
+          var oldDate = getCellStr(wsDS, r2, dateColDS);
+          if (oldDate && oldDate.trim() !== '' && !existingDates.has(cleanVal)) {
+            existingDates.set(cleanVal, oldDate.trim());
+          }
+        }
+      }
+    }
+    await yieldThread();
+    progress(2 + Math.round((di+1)/filesB.length*18));
+  }
+
+  // Đọc file TikTok
+  var tikTokRecords = [];
+  var colors = ['#ff0050','#00f2fe','#10b981','#3b82f6','#f59e0b','#ef4444','#71717a','#a855f7'];
+
+  for (var fi = 0; fi < filesA.length; fi++) {
+    var f = filesA[fi];
+    var shop = f.customShopName || parseShopName(f.name);
+    var ftype = parseFileType(f.name);
+    var wb = await readWb(f);
+    var ws = wb.Sheets[wb.SheetNames[0]];
+    var range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+
+    var headerRow = 0;
+    var hMap = {};
+    outerTikTok: for (var hr2 = range.s.r; hr2 <= Math.min(range.s.r+10, range.e.r); hr2++) {
+      var tempMap = {};
+      var foundHeaders = false;
+      for (var c = range.s.c; c <= range.e.c; c++) {
+        var val = getCellStr(ws, hr2, c).trim();
+        if (val) {
+          tempMap[val] = c;
+          if (val.toLowerCase().includes('tracking') || val.toLowerCase().includes('mã vận đơn') || val.toLowerCase().includes('product name') || val.toLowerCase().includes('tên sản phẩm')) foundHeaders = true;
+        }
+      }
+      if (foundHeaders) { headerRow = hr2; hMap = tempMap; break outerTikTok; }
+    }
+    if (Object.keys(hMap).length === 0) {
+      for (var c2 = range.s.c; c2 <= range.e.c; c2++) {
+        var hcell = ws[XLSX.utils.encode_cell({r:0, c:c2})];
+        if (hcell) hMap[String(hcell.v||'').trim()] = c2;
+      }
+      headerRow = 0;
+    }
+
+    var isExported = ('Gian hàng TikTok' in hMap) || ('Ghi chú / Lý do' in hMap);
+    if (isExported) {
+      var maIdx = findCol(hMap, ['mã vận đơn', 'tracking']);
+      var shopColIdx = findCol(hMap, ['gian hàng tiktok', 'gian hàng']);
+      if (maIdx !== undefined) {
+        for (var row = headerRow+1; row <= range.e.r; row++) {
+          var tid = getCellStr(ws, row, maIdx);
+          if (!isLikelyRealTrackingId(tid)) continue;
+          var cleanTid = sanitizeTrackingId(tid);
+          if (filterOther && isOtherPlatformId(cleanTid)) { filteredIds.add(cleanTid); continue; } // T2
+          var shopName = shopColIdx !== undefined ? getCellStr(ws, row, shopColIdx) : (shop || '(Xuất lại)');
+          tikTokRecords.push({shop:shopName, type:'exported', tid:tid, cleanTid:cleanTid, prod:'', variant:'', refund:0, ship:'', pay:'', prov:''});
+        }
+      }
+      await yieldThread();
+      progress(20 + Math.round((fi+1)/filesA.length*55));
+      continue;
+    }
+
+    var dataStart = headerRow + 1;
+
+    // T5: dò cột bằng từ khóa thay vì khớp cứng từng ký tự.
+    // File Giao KTC dùng "Tracking ID"; file Trả hàng dùng "Return Logistics
+    // Tracking ID" -> với ftype 'giao' phải loại trừ mọi cột có chữ "return".
+    var tidIdx;
+    if (ftype === 'giao') {
+      tidIdx = findCol(hMap, ['tracking id', 'tracking', 'mã vận đơn'], ['return', 'trả hàng', 'hoàn']);
+    } else {
+      tidIdx = findCol(hMap, ['return logistics tracking', 'return tracking', 'mã vận đơn trả', 'tracking']);
+    }
+    if (tidIdx === undefined) continue;
+
+    var prodIdx    = findCol(hMap, ['product name', 'tên sản phẩm']);
+    var variantIdx = findCol(hMap, ['variation', 'sku name', 'tên phân loại', 'phân loại hàng', 'tên sku']);
+    var shipIdx    = findCol(hMap, ['shipping provider', 'đơn vị vận chuyển']);
+    var payIdx     = findCol(hMap, ['payment method', 'phương thức thanh toán']);
+    var provIdx    = findCol(hMap, ['province', 'tỉnh/thành', 'tỉnh']); // T8
+
+    // T3: file Trả hàng KHÔNG có cột "Order Refund Amount" -> trước đây toàn bộ
+    // dòng bị tính refund = 0. Lùi về "Order Amount" khi không tìm thấy.
+    var refundIdx = findCol(hMap, ['order refund amount', 'số tiền hoàn trả']);
+    if (refundIdx === undefined) refundIdx = findCol(hMap, ['order amount', 'tổng giá trị đơn']);
+
+    for (var row2 = dataStart; row2 <= range.e.r; row2++) {
+      var tid2 = getCellStr(ws, row2, tidIdx);
+      if (!isLikelyRealTrackingId(tid2)) continue;
+      var cleanTid2 = sanitizeTrackingId(tid2);
+      if (filterOther && isOtherPlatformId(cleanTid2)) { filteredIds.add(cleanTid2); continue; } // T2
+      var prod    = prodIdx    !== undefined ? getCellStr(ws, row2, prodIdx)    : '';
+      var variant = variantIdx !== undefined ? getCellStr(ws, row2, variantIdx) : '';
+      var refund  = refundIdx  !== undefined ? parseMoneyTikTok(getCellStr(ws, row2, refundIdx)) : 0; // T3
+      var ship    = shipIdx    !== undefined ? getCellStr(ws, row2, shipIdx)    : '';
+      var pay     = payIdx     !== undefined ? getCellStr(ws, row2, payIdx)     : '';
+      var prov    = provIdx    !== undefined ? getCellStr(ws, row2, provIdx)    : '';
+      tikTokRecords.push({shop:shop, type:ftype, tid:tid2, cleanTid:cleanTid2, prod:prod, variant:variant, refund:refund, ship:ship, pay:pay, prov:prov});
+    }
+    await yieldThread();
+    progress(20 + Math.round((fi+1)/filesA.length*55));
+  }
+
+  // ĐỐI SOÁT
+  var cleanTikTokIds = new Set(tikTokRecords.map(function(r){return r.cleanTid;}));
+  var seenMiss = new Set();
+  var missA = [];
+  tikTokRecords.forEach(function(rec) {
+    if (!doiSoatIds.has(rec.cleanTid) && !seenMiss.has(rec.cleanTid)) {
+      missA.push(rec); seenMiss.add(rec.cleanTid);
+    }
+  });
+
+  // MissB: Kho chưa có TikTok — GIỮ NGÀY CŨ nếu đã có, mới cập nhật ngày hôm nay
+  var missB = [];
+  doiSoatIds.forEach(function(cleanId) {
+    if (!cleanTikTokIds.has(cleanId)) {
+      var originalId = originalDoiSoatIds.get(cleanId) || cleanId;
+      // Ưu tiên ngày cũ, nếu không có thì dùng ngày hôm nay
+      var dateStr = existingDates.has(cleanId) ? existingDates.get(cleanId) : today;
+      missB.push({ id: originalId, cleanId: cleanId, date: dateStr });
+    }
+  });
+
+  // T1: mẫu số phải là TỔNG MÃ TIKTOK, không phải tổng mã Kho.
+  // Kho là backlog tích lũy nhiều kỳ (985 mã) trong khi chứng từ TikTok chỉ
+  // vài trăm mã mỗi kỳ -> chia cho Kho luôn ra ~3%, chip cảnh báo đỏ vĩnh viễn.
+  var matchCount = 0;
+  cleanTikTokIds.forEach(function(cleanId){ if (doiSoatIds.has(cleanId)) matchCount++; });
+  var rate = cleanTikTokIds.size ? Math.round(matchCount/cleanTikTokIds.size*100) : 0;
+
+  resultMissA = missA;
+  resultMissB = missB;
+  resultFiltered = Array.from(filteredBacklog.values());
+  pageA = 1; pageB = 1;
+  _$('searchA').value = '';
+  _$('searchB').value = '';
+  searchStrA = ''; searchStrB = '';
+
+  // Điền số liệu
+  _$('mTotal').textContent = fmtNum(doiSoatIds.size);
+  _$('mTikTok').textContent = fmtNum(cleanTikTokIds.size);
+  _$('mMatched').textContent = fmtNum(matchCount);
+  _$('mRate').textContent = rate + '%';
+  _$('mMissA').textContent = fmtNum(missA.length);
+  _$('mMissB').textContent = fmtNum(missB.length);
+
+  var oldCountAll = missB.filter(function(m){ return (daysSince(m.date) || 0) >= 7; }).length;
+  _$('mOld').textContent = fmtNum(oldCountAll);
+
+  _$('mFiltered').textContent = fmtNum(filteredIds.size);
+  _$('mFilteredSub').textContent = filterOther
+    ? 'SPXVN + GY… (đã loại)' : 'bộ lọc đang TẮT';
+
+  var totalRefund = tikTokRecords.reduce(function(s,r){return s+r.refund;}, 0);
+  _$('mRefund').textContent = fmtNum(totalRefund) + ' đ';
+
+  // T8: Tỉnh/Thành trả nhiều nhất (lấy từ cột Province của file Giao KTC)
+  var provMap = {};
+  tikTokRecords.forEach(function(r){ if (r.prov) provMap[r.prov] = (provMap[r.prov]||0)+1; });
+  var provSorted = Object.entries(provMap).sort(function(a,b){return b[1]-a[1];});
+  if (provSorted.length) {
+    _$('mTopProv').textContent = provSorted[0][0];
+    _$('mTopProvSub').textContent = fmtNum(provSorted[0][1]) + ' đơn trả';
+  } else {
+    _$('mTopProv').textContent = '—';
+    _$('mTopProvSub').textContent = 'file không có cột Province';
+  }
+
+  // T7: file Trả hàng không có cột ĐVVC -> bỏ hẳn khỏi biểu đồ thay vì dồn
+  // vào nhóm "Không rõ" làm nhóm này luôn đứng đầu.
+  var shipMap = {};
+  tikTokRecords.forEach(function(r){ if (r.ship) shipMap[r.ship] = (shipMap[r.ship]||0)+1; });
+  var shipSorted = Object.entries(shipMap).sort(function(a,b){return b[1]-a[1];});
+  if (shipSorted.length) {
+    _$('mTopShip').textContent = shipSorted[0][0];
+    _$('mTopShipSub').textContent = fmtNum(shipSorted[0][1]) + ' đơn trả';
+  } else { _$('mTopShip').textContent = '—'; _$('mTopShipSub').textContent = ''; }
+
+  var prodMap = {};
+  tikTokRecords.forEach(function(r){if(r.prod){var k=r.prod.substring(0,50); prodMap[k]=(prodMap[k]||0)+1;}});
+  var prodSorted = Object.entries(prodMap).sort(function(a,b){return b[1]-a[1];});
+  if (prodSorted.length) {
+    _$('mTopProd').textContent = prodSorted[0][0].substring(0,36)+'...';
+    _$('mTopProdSub').textContent = fmtNum(prodSorted[0][1]) + ' đơn hoàn';
+  } else { _$('mTopProd').textContent = '—'; _$('mTopProdSub').textContent = ''; }
+
+  var warns = [];
+  if (rate < 90) warns.push({ok:false, text:rate+'% mã TikTok đã có ở Kho — dưới ngưỡng 90%, còn '+fmtNum(missA.length)+' mã chưa thấy hàng về'});
+  else warns.push({ok:true, text:rate+'% mã TikTok đã có hàng về Kho — đạt yêu cầu'});
+  if (filterOther && filteredIds.size) warns.push({ok:true, text:'Đã lọc '+fmtNum(filteredIds.size)+' mã không thuộc TikTok (SPXVN / GY…) khỏi đối soát'});
+  else if (!filterOther) warns.push({ok:false, text:'Bộ lọc mã sàn khác đang TẮT — backlog có thể lẫn hàng trả Shopee'});
+  if (missA.length > 0) {
+    var shopMissMap = {};
+    missA.forEach(function(r){shopMissMap[r.shop]=(shopMissMap[r.shop]||0)+1;});
+    var worst = Object.entries(shopMissMap).sort(function(a,b){return b[1]-a[1];})[0];
+    if (worst) warns.push({ok:false, text:'Gian "'+worst[0]+'" lệch lớn nhất: '+worst[1]+' mã chưa tìm thấy trong kho'});
+  }
+  if (missB.length > 0) {
+    var oldCount = missB.filter(function(m){ return (daysSince(m.date)||0) >= 7; }).length;
+    warns.push({ok:false, text:'Có '+fmtNum(missB.length)+' mã kho chưa khớp chứng từ TikTok' + (oldCount > 0 ? ' — trong đó '+oldCount+' mã tồn trên 7 ngày ⚠' : '')});
+  }
+  _$('warningArea').innerHTML = warns.map(function(w){
+    return '<span class="chip '+(w.ok?'chip-ok':'chip-warn')+'">'+(w.ok?'✓ ':'⚠ ')+w.text+'</span>';
+  }).join('');
+
+  // Biểu đồ Shop
+  var shopMap2 = {};
+  tikTokRecords.forEach(function(r){
+    if (!shopMap2[r.shop]) shopMap2[r.shop]={match:0,miss:0};
+    if (doiSoatIds.has(r.cleanTid)) shopMap2[r.shop].match++; else shopMap2[r.shop].miss++;
+  });
+  var shopEntries = Object.entries(shopMap2).sort(function(a,b){return(b[1].match+b[1].miss)-(a[1].match+a[1].miss);});
+  _$('shopBars').innerHTML = shopEntries.map(function(e){
+    var s=e[0], d=e[1], tot=d.match+d.miss||1;
+    var mp=Math.round(d.match/tot*100), fp=100-mp;
+    return '<div class="shop-bar-row"><div class="shop-bar-label" title="'+s+'">'+s+'</div>'+
+      '<div class="shop-bar-track">'+
+      (d.match?'<div class="shop-bar-match" style="width:'+mp+'%">'+d.match+'</div>':'')+
+      (d.miss?'<div class="shop-bar-miss" style="width:'+fp+'%">'+d.miss+'</div>':'')+
+      '</div><div class="shop-bar-end" style="color:'+(d.miss?'var(--red)':'var(--green)')+'">'+
+      (d.miss?'✗ '+d.miss:'✓')+'</div></div>';
+  }).join('') || '<div style="color:var(--text-muted);font-size:13px;padding:8px 0">Không có dữ liệu</div>';
+
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const labelColor = isDark ? '#a1a1aa' : '#475569';
+
+  if (shipChart) shipChart.destroy();
+  if (shipSorted.length) {
+    shipChart = new Chart(_$('chartShip'), {
+      type: 'doughnut',
+      data: {
+        labels: shipSorted.map(function(d){return d[0]+' ('+d[1]+')';}),
+        datasets: [{data: shipSorted.map(function(d){return d[1];}), backgroundColor:colors, borderWidth:0}]
+      },
+      options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'right', labels:{font:{size:10,family:'Plus Jakarta Sans'},boxWidth:10,padding:6,color:labelColor}}}, cutout:'65%' }
+    });
+  }
+
+  if (prodChart) prodChart.destroy();
+  var top5 = prodSorted.slice(0,5);
+  if (top5.length) {
+    prodChart = new Chart(_$('chartProd'), {
+      type: 'bar',
+      data: {
+        labels: top5.map(function(p){return p[0].length>20?p[0].substring(0,20)+'…':p[0];}),
+        datasets: [{data:top5.map(function(p){return p[1];}), backgroundColor:'#ff0050', borderRadius:4, borderWidth:0}]
+      },
+      options: { indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{ticks:{font:{size:10,family:'Plus Jakarta Sans'},color:labelColor},grid:{display:false}},y:{ticks:{font:{size:10,family:'Plus Jakarta Sans'},color:labelColor},grid:{display:false}}} }
+    });
+  }
+
+  var payMap = {};
+  tikTokRecords.forEach(function(r){var p=normalizePay(r.pay); payMap[p]=(payMap[p]||0)+1;}); // T6
+  var paySorted = Object.entries(payMap).sort(function(a,b){return b[1]-a[1];});
+  var payMax = paySorted.length?paySorted[0][1]:1;
+  var payColors = ['#ff0050','#00f2fe','#10b981','#3b82f6','#f59e0b'];
+  _$('payChart').innerHTML = paySorted.map(function(d,i){
+    return '<div class="bar-row"><div class="bar-label" title="'+d[0]+'">'+d[0]+'</div>'+
+      '<div class="bar-track"><div class="bar-fill" style="width:'+Math.round(d[1]/payMax*100)+'%;background:'+payColors[i%payColors.length]+'"></div></div>'+
+      '<div class="bar-count">'+d[1]+' <span class="bar-pct">('+Math.round(d[1]/(tikTokRecords.length||1)*100)+'%)</span></div></div>';
+  }).join('');
+
+  renderTableA();
+  renderTableB();
+  progress(100);
+  setTimeout(function(){_$('pb').style.display='none';},400);
+  _$('results').style.display = 'block';
+  _$('results').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function handleSearchA() { searchStrA = _$('searchA').value.toLowerCase().trim(); pageA=1; renderTableA(); }
+function handleSearchB() { searchStrB = _$('searchB').value.toLowerCase().trim(); pageB=1; renderTableB(); }
+
+function renderTableA() {
+  const tbody = _$('tbodyA');
+  const pager = _$('pagerA');
+  const filtered = resultMissA.filter(r => r.tid.toLowerCase().includes(searchStrA) || r.shop.toLowerCase().includes(searchStrA));
+  _$('cntA').textContent = '('+filtered.length+')';
+  const btnExA = _$('btnExportA');
+  btnExA.style.display = resultMissA.length > 0 ? 'inline-flex' : 'none';
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="4">✅ Tất cả mã vận đơn đều khớp dữ liệu Kho</td></tr>';
+    pager.innerHTML = ''; return;
+  }
+  const totalPages = Math.ceil(filtered.length/pageSize);
+  const startIdx = (pageA-1)*pageSize;
+  const pageData = filtered.slice(startIdx, startIdx+pageSize);
+  tbody.innerHTML = pageData.map(function(r,i){
+    return '<tr><td>'+(startIdx+i+1)+'</td>'+
+      '<td><span class="shop-tag">'+r.shop+'</span></td>'+
+      '<td><span class="type-tag">'+(r.type==='giao'?'Giao KTC':r.type==='exported'?'📂 Xuất lại':'Trả hàng')+'</span></td>'+
+      '<td><code>'+r.tid+'</code></td></tr>';
+  }).join('');
+  renderPager(pager, pageA, totalPages, function(p){pageA=p; renderTableA();});
+}
+
+function renderTableB() {
+  const tbody = _$('tbodyB');
+  const pager = _$('pagerB');
+  const filtered = resultMissB.filter(m => m.id.toLowerCase().includes(searchStrB));
+  _$('cntB').textContent = '('+filtered.length+')';
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="5">✅ Tất cả mã đối soát đều có chứng từ TikTok</td></tr>';
+    pager.innerHTML = ''; return;
+  }
+  const totalPages = Math.ceil(filtered.length/pageSize);
+  const startIdx = (pageB-1)*pageSize;
+  const pageData = filtered.slice(startIdx, startIdx+pageSize);
+  tbody.innerHTML = pageData.map(function(m, i){
+    var days = daysSince(m.date);
+    var daysLabel = days === null ? '—' : days + ' ngày';
+    var isOld = days !== null && days >= 7;
+    return '<tr>'+
+      '<td>'+(startIdx+i+1)+'</td>'+
+      '<td><code>'+m.id+'</code></td>'+
+      '<td>'+(isOld ? '<span class="badge-old">📅 '+m.date+'</span>' : '<span class="badge-new">📅 '+m.date+'</span>')+'</td>'+
+      '<td style="font-weight:700;color:'+(isOld?'var(--red)':'var(--text-secondary)')+'">'+daysLabel+'</td>'+
+      '<td>'+(isOld?'<span class="badge-red">⚠ Tồn lâu</span>':'<span class="badge-amber">Chưa có chứng từ</span>')+'</td>'+
+    '</tr>';
+  }).join('');
+  renderPager(pager, pageB, totalPages, function(p){pageB=p; renderTableB();});
+}
+
+function renderPager(container, currentPage, totalPages, onPageChange) {
+  if (totalPages <= 1) { container.innerHTML = ''; return; }
+  var pid = container.id;
+  window['pager_'+pid] = onPageChange;
+  var go = "window['pager_"+pid+"']";
+  var html = '<button class="page-btn" '+(currentPage===1?'disabled':'')+' onclick="'+go+'(1)">«</button>';
+  html += '<button class="page-btn" '+(currentPage===1?'disabled':'')+' onclick="'+go+'('+(currentPage-1)+')">‹</button>';
+  var s0 = Math.max(1, currentPage-2), e0 = Math.min(totalPages, currentPage+2);
+  for (var i=s0; i<=e0; i++) html += '<button class="page-btn '+(i===currentPage?'active':'')+'" onclick="'+go+'('+i+')">'+i+'</button>';
+  html += '<button class="page-btn" '+(currentPage===totalPages?'disabled':'')+' onclick="'+go+'('+(currentPage+1)+')">›</button>';
+  html += '<button class="page-btn" '+(currentPage===totalPages?'disabled':'')+' onclick="'+go+'('+totalPages+')">»</button>';
+  container.innerHTML = html;
+}
+
+function exportExcelA() {
+  if (!resultMissA.length) { alert('Không có mã nào để xuất!'); return; }
+  var rows = resultMissA.map(function(r,i){
+    return {
+      'STT': i+1,
+      'Mã vận đơn': r.tid,
+      'Gian hàng TikTok': r.shop,
+      'Loại tệp tin': r.type==='giao'?'Giao không thành công':r.type==='exported'?'Đã xuất lại lệch':'Trả hàng hoàn tiền',
+      'Tên sản phẩm': r.prod || '',
+      'Phân loại': r.variant || '',
+      'Ghi chú / Lý do': ''
+    };
+  });
+  var ws = XLSX.utils.json_to_sheet(rows);
+  var ref = XLSX.utils.decode_range(ws['!ref']);
+  for (var r=ref.s.r+1; r<=ref.e.r; r++){var a=XLSX.utils.encode_cell({r:r,c:1}); if(ws[a]){ws[a].t='s';ws[a].z='@';}}
+  ws['!cols'] = [{wch:6},{wch:28},{wch:26},{wch:32},{wch:40},{wch:25},{wch:36}];
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'TikTok_Lech_Kho');
+  XLSX.writeFile(wb, 'TikTok_chua_co_trong_kho_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
+
+function exportExcelB() {
+  // Backlog là SỔ CHUNG các mã đã về kho chưa được nhận diện. File này ghi cả
+  // mã đã bị bộ lọc loại khỏi đối soát TikTok, để tool Shopee nạp lại dùng được.
+  var all = resultMissB.concat(resultFiltered);
+  if (!all.length) { alert('Không có mã nào để xuất!'); return; }
+  var rows = all.map(function(m, i){
+    var days = daysSince(m.date);
+    return {
+      'STT': i+1,
+      'Mã vận đơn': m.id,
+      'Nghi thuộc sàn': guessPlatform(m.cleanId),
+      'Ngày đối soát': m.date,
+      'Số ngày tồn': days !== null ? days : '',
+      'Trạng thái': days !== null && days >= 7 ? '⚠ Tồn lâu (≥7 ngày)' : 'Chưa có chứng từ TikTok'
+    };
+  });
+  var ws = XLSX.utils.json_to_sheet(rows);
+  var ref = XLSX.utils.decode_range(ws['!ref']);
+  for (var r=ref.s.r+1; r<=ref.e.r; r++){var a=XLSX.utils.encode_cell({r:r,c:1}); if(ws[a]){ws[a].t='s';ws[a].z='@';}}
+  ws['!cols'] = [{wch:6},{wch:28},{wch:16},{wch:16},{wch:13},{wch:32}];
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Kho_Chua_Chung_Tu_TikTok');
+  XLSX.writeFile(wb, 'Kho_chua_co_chung_tu_tiktok_'+new Date().toISOString().slice(0,10)+'.xlsx');
+}
+
+function switchTab(paneId, btn) {
+  document.querySelectorAll('#pane_tt .tab-pane').forEach(function(p){p.classList.remove('active');});
+  document.querySelectorAll('#pane_tt .tab-btn').forEach(function(b){b.classList.remove('active');});
+  _$(paneId).classList.add('active');
+  btn.classList.add('active');
+}
+
+function applyChartTheme() {
+  var c = document.documentElement.getAttribute('data-theme') === 'dark' ? '#a1a1aa' : '#475569';
+  if (shipChart) { shipChart.options.plugins.legend.labels.color = c; shipChart.update(); }
+  if (prodChart) { prodChart.options.scales.x.ticks.color = c; prodChart.options.scales.y.ticks.color = c; prodChart.update(); }
+}
+
+return { runMatch: runMatch, switchTab: switchTab, exportExcelA: exportExcelA, exportExcelB: exportExcelB, handleSearchA: handleSearchA, handleSearchB: handleSearchB, removeFile: removeFile, editShopName: editShopName, applyChartTheme: applyChartTheme };
+})();
+
+
+/* ---------- Ghi nhớ lựa chọn. Bọc try/catch vì một số trình duyệt chặn
+     localStorage khi mở file trực tiếp từ ổ đĩa — không được để việc này
+     làm hỏng cả trang. ---------- */
+function memSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+function memGet(k)    { try { return localStorage.getItem(k); } catch (e) { return null; } }
+
+/* ---------- Chuyển sàn. Hai pane giữ dữ liệu riêng, đổi tab không mất file ---------- */
+function switchPlatform(p) {
+  document.documentElement.setAttribute('data-platform', p);
+  document.getElementById('pane_sp').classList.toggle('active', p === 'sp');
+  document.getElementById('pane_tt').classList.toggle('active', p === 'tt');
+  document.getElementById('platBtnSp').classList.toggle('active', p === 'sp');
+  document.getElementById('platBtnTt').classList.toggle('active', p === 'tt');
+  document.getElementById('platTitle').textContent =
+    p === 'sp' ? 'Đối soát đơn hàng trả — Shopee' : 'Đối soát đơn hàng trả — TikTok Shop';
+  memSet('platform', p);
+}
+
+/* ---------- Giao diện Sáng/Tối dùng chung cho cả hai tab ---------- */
+function toggleTheme() {
+  var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  memSet('theme', next);
+  paintThemeIcon(next);
+  SP.applyChartTheme(); TT.applyChartTheme();
+}
+function paintThemeIcon(mode) {
+  var icon = document.getElementById('theme-icon');
+  if (!icon) return;
+  icon.innerHTML = mode === 'dark'
+    ? '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>'
+    : '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+}
+(function () {
+  var savedTheme = memGet('theme') || 'light';
+  if (savedTheme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+  var savedPlat = memGet('platform') || 'sp';
+  document.addEventListener('DOMContentLoaded', function () {
+    paintThemeIcon(savedTheme);
+    switchPlatform(savedPlat);
+  });
+})();
+
+</script>
+</body>
+</html>
