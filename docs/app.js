@@ -1,9 +1,14 @@
 (function () {
   'use strict';
   var P = window.Parse;
-  var ST_OPEN = ['Mới', 'Chưa về kho', 'Chưa tìm thấy'], ST_CLOSED = ['Đã tìm thấy', 'Đã khiếu nại', 'Xác nhận mất'];
-  var ST_ALL = ST_OPEN.concat(ST_CLOSED);
-  var ST_CLS = { 'Mới': 's-moi', 'Chưa về kho': 's-chuave', 'Chưa tìm thấy': 's-chuatim', 'Đã tìm thấy': 's-datim', 'Đã khiếu nại': 's-khieunai', 'Xác nhận mất': 's-mat' };
+  // Danh sách trạng thái lấy từ config.statuses (backend); mặc định khi chưa tải.
+  var ST_DEF = [['Mới', 0], ['Chưa về kho', 0], ['Chưa tìm thấy', 0], ['Chờ kiểm tra', 0], ['Đã tìm thấy', 1], ['Đã khiếu nại', 1], ['Xác nhận mất', 1], ['Hỏng hóc / Lỗi', 1]]
+    .map(function (x) { return { ten: x[0], dong: !!x[1] }; });
+  function statuses() { return (S.data && S.data.config.statuses) || ST_DEF; }
+  function stAll() { return statuses().map(function (x) { return x.ten; }); }
+  function stClosed() { return statuses().filter(function (x) { return x.dong; }).map(function (x) { return x.ten; }); }
+  function stCls(t) { return ST_CLS[t] || 's-def'; }
+  var ST_CLS = { 'Mới': 's-moi', 'Chưa về kho': 's-chuave', 'Chưa tìm thấy': 's-chuatim', 'Đã tìm thấy': 's-datim', 'Đã khiếu nại': 's-khieunai', 'Xác nhận mất': 's-mat', 'Chờ kiểm tra': 's-chokt', 'Hỏng hóc / Lỗi': 's-hong' };
   var KHO_CLS = { TSN: 'k-tsn', NVS: 'k-nvs', VL: 'k-vl' };
   var PAGE = 50, CHUNK = 20000, CONFIRM_CLOSE = 'Chi tiết đơn sẽ bị xóa sau 14 ngày. Tiếp tục?';
   var S = { data: null, token: '', user: null, page: 1, sel: {}, rowErr: {}, loadedAt: 0, kho: null, san: [], impManual: {}, impOverride: {}, view: 'compact' };
@@ -103,11 +108,11 @@
     var wk = {};
     cs.forEach(function (c) { if (c.tuan_key) wk[c.tuan_key] = c.tuan; });
     $('fTuan').innerHTML = opts(Object.keys(wk).sort().reverse().map(function (k) { return { v: k, t: wk[k] }; }), keep('fTuan'), 'Tất cả');
-    $('fTt').innerHTML = opts(ST_ALL, keep('fTt'), 'Tất cả');
+    $('fTt').innerHTML = opts(stAll(), keep('fTt'), 'Tất cả');
     var own = owners();
     $('fOwner').innerHTML = opts(d.config.gians.map(function (g) { return own[g.ten]; }).filter(function (v, i, a) { return v && a.indexOf(v) === i; }).sort(), keep('fOwner'), 'Tất cả');
     $('bulkKho').innerHTML = opts(d.config.kho_list.concat([{ v: '-', t: '(Trống)' }]), '', '— KHO —');
-    $('bulkTt').innerHTML = opts(ST_ALL, '', '— Trạng thái —');
+    $('bulkTt').innerHTML = opts(stAll(), '', '— Trạng thái —');
     var km = d.khoMeta || {};
     $('khoMeta').textContent = km.lastUpdate ? 'Kho cập nhật lần cuối: ' + km.lastUpdate + ' bởi ' + km.by + ' (' + km.count + ' mã)' : 'Kho chưa có dữ liệu';
   }
@@ -117,7 +122,7 @@
     ((S.data && S.data.config.gians) || []).forEach(function (g) { m[g.ten] = g.owner_name || g.owner; });
     return m;
   }
-  function isClosed(c) { return ST_CLOSED.indexOf(c.trang_thai) >= 0; }
+  function isClosed(c) { return stClosed().indexOf(c.trang_thai) >= 0; }
   function days(c) { return P.daysOpen(c.created_at, isClosed(c) ? c.closed_at : '', new Date()); }
 
   function filterState() {
@@ -170,7 +175,7 @@
     var f = filterState(), base = baseMatcher(f);
     var open = S.data.cases.filter(function (c) { return !isClosed(c) && base(c); });
     var cnt = function (st) { return open.filter(function (c) { return c.trang_thai === st; }).length; };
-    $('cChuaTim').textContent = cnt('Chưa tìm thấy'); $('cMoi').textContent = cnt('Mới'); $('cChuaVe').textContent = cnt('Chưa về kho');
+    $('cChuaTim').textContent = cnt('Chưa tìm thấy'); $('cMoi').textContent = cnt('Mới'); $('cChuaVe').textContent = cnt('Chưa về kho'); $('cChoKt').textContent = cnt('Chờ kiểm tra');
     $('cTon').textContent = open.filter(function (c) { return days(c) >= 7; }).length;
     $('statNote').hidden = !(f.san || f.gian || f.kho || f.tuan || f.owner || f.codes.length);
 
@@ -193,8 +198,8 @@
       var kho, tt, note, tg, tuan, lydo;
       if (ed) {
         kho = '<select data-ma="' + ma + '" data-f="kho" class="' + (KHO_CLS[c.kho] || '') + '">' + opts(S.data.config.kho_list, c.kho, '') + '</select>';
-        var stList = isClosed(c) && S.user.role !== 'admin' ? ST_CLOSED : ST_ALL;
-        tt = '<select data-ma="' + ma + '" data-f="trang_thai" class="' + (ST_CLS[c.trang_thai] || '') + '">' + opts(stList, c.trang_thai) + '</select>';
+        var stList = isClosed(c) && S.user.role !== 'admin' ? stClosed() : stAll();
+        tt = '<select data-ma="' + ma + '" data-f="trang_thai" class="' + stCls(c.trang_thai) + '">' + opts(stList, c.trang_thai) + '</select>';
         note = compact ? '<textarea class="note auto" rows="1" data-ma="' + ma + '" data-f="ghi_chu">' + esc(c.ghi_chu) + '</textarea>'
           : '<input class="note" data-ma="' + ma + '" data-f="ghi_chu" value="' + esc(c.ghi_chu) + '">';
         lydo = compact ? '<textarea class="note auto" rows="1" maxlength="300" data-ma="' + ma + '" data-f="ly_do_tra">' + esc(c.ly_do_tra) + '</textarea>'
@@ -203,7 +208,7 @@
         tuan = wkHtml('data-ma="' + ma + '" data-f="tuan"', c.tuan);
       } else {
         kho = c.kho ? '<span class="badge ' + (KHO_CLS[c.kho] || '') + '">' + esc(c.kho) + '</span>' : '';
-        tt = '<span class="badge ' + (ST_CLS[c.trang_thai] || '') + '">' + esc(c.trang_thai) + '</span>';
+        tt = '<span class="badge ' + stCls(c.trang_thai) + '">' + esc(c.trang_thai) + '</span>';
         note = esc(c.ghi_chu); tg = esc(c.thoi_gian_tra); tuan = esc(c.tuan); lydo = esc(c.ly_do_tra);
       }
       var nhom = esc(nhomOf(c.gian) || c.san), tonCls = d !== '' && d >= 7 ? 'ton7' : '';
@@ -233,7 +238,7 @@
   function saveItems(items) {
     var closing = items.some(function (it) {
       var c = findCase(it.ma);
-      return it.fields.trang_thai && ST_CLOSED.indexOf(it.fields.trang_thai) >= 0 && c && c.trang_thai !== it.fields.trang_thai;
+      return it.fields.trang_thai && stClosed().indexOf(it.fields.trang_thai) >= 0 && c && c.trang_thai !== it.fields.trang_thai;
     });
     if (closing && !confirm(CONFIRM_CLOSE)) { render(); return Promise.resolve(); }
     msg('Đang lưu...', 'info');
@@ -495,6 +500,7 @@
     if (r.odd) warns.push(r.odd + ' dòng có trạng thái lạ → đặt "Mới" và ghi vào Ghi chú "Sheet cũ: ...".');
     if (r.badKho) warns.push(r.badKho + ' dòng có KHO không nhận ra → để trống.');
     if (r.noKho) warns.push(r.noKho + ' dòng (ngoài nhóm Newtea) chưa có KHO.');
+    if (r.noSan) warns.push(r.noSan + ' dòng lỗi: không xác định được sàn (Gian hàng thiếu tiền tố TIKTOK/SHOPEE). Chọn Sàn Shopee/TikTok nếu dữ liệu chỉ có một sàn.');
     if (r.joined.length) warns.push('Đã nối ' + r.joined.length + ' dòng bị ngắt (ô có xuống dòng mất ngoặc kép), kiểm tra dòng: ' + r.joined.join(', ') + '.');
     if (r.dup) warns.push(r.dup + ' dòng trùng mã trong dữ liệu dán → bỏ.');
     var um = Object.keys(r.unmatched);
@@ -508,7 +514,7 @@
       show.map(function (x) {
         return '<tr class="' + (x.error ? 'rowerr' : '') + '"><td>' + x.line + '</td><td>' + esc(x.tuan || x.tuan_raw) + '</td><td class="ma">' + esc(x.ma) + '</td><td>' + esc(x.gianRaw) + ' → ' + esc(x.gian || '?') +
           '</td><td><select data-loai="' + esc(x.ma) + '"' + (x.inferred ? ' class="s-chuave"' : '') + '>' + opts(['Trả hàng', 'Giao không thành công'], x.loai_tep) + '</select></td><td class="sp">' + esc(x.ly_do_tra) +
-          '</td><td>' + esc(x.phan_loai) + '</td><td>' + esc(x.kho) + '</td><td><span class="badge ' + (ST_CLS[x.trang_thai] || '') + '">' + esc(x.trang_thai) + '</span></td><td>' + esc(x.ghi_chu) + '</td><td class="err">' + esc(x.error || '') + '</td></tr>';
+          '</td><td>' + esc(x.phan_loai) + '</td><td>' + esc(x.kho) + '</td><td><span class="badge ' + stCls(x.trang_thai) + '">' + esc(x.trang_thai) + '</span></td><td>' + esc(x.ghi_chu) + '</td><td class="err">' + esc(x.error || '') + '</td></tr>';
       }).join('') + '</tbody></table></div>' + (r.rows.length > show.length ? '<p class="muted">Chỉ hiện ' + show.length + '/' + r.rows.length + ' dòng đầu.</p>' : '');
     $('impRun').disabled = !ok;
   }

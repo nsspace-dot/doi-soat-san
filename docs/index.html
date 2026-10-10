@@ -29,6 +29,7 @@
     <div class="card c-chuatim"><b id="cChuaTim">0</b><span>Chưa tìm thấy</span></div>
     <div class="card c-moi"><b id="cMoi">0</b><span>Mới (chưa phân loại)</span></div>
     <div class="card c-chuave"><b id="cChuaVe">0</b><span>Chưa về kho</span></div>
+    <div class="card c-chokt"><b id="cChoKt">0</b><span>Chờ kiểm tra</span></div>
     <div class="card c-ton"><b id="cTon">0</b><span>Tồn ≥ 7 ngày</span></div>
   </section>
   <p id="statNote" class="statnote" hidden>Đang tính theo bộ lọc <button id="btnClearF" type="button">Xóa bộ lọc</button></p>
@@ -106,7 +107,7 @@
     <h2>Nhập từ Sheet cũ</h2>
     <p class="muted">Mở Sheet cũ, chọn cả vùng dữ liệu kèm dòng tiêu đề (Tuần/Ngày đối soát, Mã vận đơn, Gian hàng, Lý do trả, Tên sản phẩm, Phân loại, Thời gian trả trên hệ thống, Trạng thái, KHO...), sao chép rồi dán vào ô dưới. Nhập lại nhiều lần vẫn an toàn: mã đã có không tạo thêm.</p>
     <div class="filters">
-      <label>Sàn mặc định (dòng không có tiền tố TIKTOK/SHOPEE)<select id="impSan"><option>Shopee</option><option>TikTok</option></select></label>
+      <label>Sàn<select id="impSan"><option value="">Tự nhận từ cột Gian hàng (Newtea, file có ghi TIKTOK/SHOPEE trong tên gian)</option><option>Shopee</option><option>TikTok</option></select><span class="hint">Dữ liệu Newtea: chọn Tự nhận</span></label>
       <button id="impParse" class="primary">Phân tích</button>
     </div>
     <textarea id="impText" rows="8" style="width:100%" placeholder="Dán dữ liệu từ Google Sheet / Excel vào đây"></textarea>

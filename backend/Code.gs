@@ -5,7 +5,7 @@ var SHEETS = {
   Cases: ['ma', 'tuan', 'san', 'gian', 'loai_tep', 'ten_sp', 'phan_loai', 'ma_don_hang', 'dvvc', 'kho', 'trang_thai',
     'thoi_gian_tra', 'ghi_chu', 'created_at', 'created_by', 'closed_at', 'updated_at', 'updated_by', 'tuan_key', 'ly_do_tra'],
   Closed: ['ma', 'closed_at', 'trang_thai'],
-  Weekly: ['tuan', 'gian', 'total', 'found', 'complained', 'lost', 'tuan_key'],
+  Weekly: ['tuan', 'gian', 'total', 'found', 'complained', 'lost', 'tuan_key', 'hong'],
   Log: ['ts', 'user', 'action', 'detail'],
   Config: ['key', 'value']
 };
@@ -111,7 +111,7 @@ function buildList() {
     cases: readRows('Cases').map(function (r) { return toObj('Cases', r); }),
     khoMeta: { lastUpdate: kl.lastUpdate || '', by: kl.by || '', count: Math.max(0, sheet('Kho').getLastRow() - 1) },
     config: {
-      kho_list: cfg.kho_list, nhom_list: nhomList(cfg.gians),
+      kho_list: cfg.kho_list, nhom_list: nhomList(cfg.gians), statuses: statusList(),
       gians: cfg.gians.map(function (g) {
         return { san: g.san, ten: g.ten, nhom: g.nhom, owner: g.owner, owner_name: names[g.owner] || g.owner, alias: g.alias, active: g.active };
       })
@@ -264,13 +264,15 @@ function actAdminUpsertUser(user, b) {
 // ---------- Weekly ----------
 function readWeekly() {
   return readRows('Weekly').map(function (r) {
-    return { tuan: String(r[0]), gian: String(r[1]), total: +r[2] || 0, found: +r[3] || 0, complained: +r[4] || 0, lost: +r[5] || 0, tuan_key: String(r[6]) };
+    var o = { tuan: String(r[0]), gian: String(r[1]), tuan_key: String(r[6]) };
+    WEEKLY_FIELDS.forEach(function (f) { o[f] = +r[SHEETS.Weekly.indexOf(f)] || 0; });
+    return o;
   });
 }
 function applyWeekly(deltas) {
   if (!deltas.length) return;
   writeRows('Weekly', weeklyApply(readWeekly(), deltas).map(function (w) {
-    return [w.tuan, w.gian, w.total, w.found, w.complained, w.lost, w.tuan_key];
+    return SHEETS.Weekly.map(function (h) { return w[h] == null ? (WEEKLY_FIELDS.indexOf(h) >= 0 ? 0 : '') : w[h]; });
   }));
 }
 function caseKey(r) {
@@ -295,9 +297,9 @@ function actIngestKho(user, b) {
 
   var rows = readRows('Cases'), deltas = [], closed = 0;
   rows.forEach(function (r) {
-    if (!isOpenState(String(r[C.trang_thai])) || !kho[normalizeMa(r[C.ma])]) return;
+    if (!isAutoCloseState(String(r[C.trang_thai])) || !kho[normalizeMa(r[C.ma])]) return;
     var old = caseKey(r);
-    r[C.trang_thai] = 'Đã tìm thấy'; r[C.closed_at] = now; r[C.updated_at] = now; r[C.updated_by] = 'auto';
+    r[C.trang_thai] = AUTO_CLOSE_STATE; r[C.closed_at] = now; r[C.updated_at] = now; r[C.updated_by] = 'auto';
     deltas = deltas.concat(weeklyDeltas(old, caseKey(r))); closed++;
   });
   if (closed) { writeRows('Cases', rows); applyWeekly(deltas); }
@@ -331,7 +333,7 @@ function actIngestSan(user, b) {
     else if (closed[r.ma]) res.existedClosed++;
     else if (kho[r.ma]) res.matchedKho++;
     else {
-      add.push([r.ma, tuan, gian.san, gian.ten, r.loai_tep, s(r.ten_sp), s(r.phan_loai), s(r.ma_don_hang), s(r.dvvc), '', 'Mới',
+      add.push([r.ma, tuan, gian.san, gian.ten, r.loai_tep, s(r.ten_sp), s(r.phan_loai), s(r.ma_don_hang), s(r.dvvc), '', NEW_STATE,
         '', '', now, user.username, '', now, user.username, wk.tuan_key, clipLyDo(r.ly_do_tra)]);
     }
   });
@@ -416,7 +418,7 @@ function setup() {
   Object.keys(SHEETS).forEach(function (n) {
     var sh = book.getSheetByName(n) || book.insertSheet(n), h = SHEETS[n];
     sh.getRange(1, 1, sh.getMaxRows(), n === 'Weekly' ? 2 : h.length).setNumberFormat('@');
-    if (n === 'Weekly') sh.getRange(1, h.length, sh.getMaxRows(), 1).setNumberFormat('@');
+    if (n === 'Weekly') sh.getRange(1, h.indexOf('tuan_key') + 1, sh.getMaxRows(), 1).setNumberFormat('@');
     sh.getRange(1, 1, 1, h.length).setValues([h]).setFontWeight('bold');
     sh.setFrozenRows(1);
   });

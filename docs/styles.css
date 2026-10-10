@@ -51,7 +51,8 @@ main{padding:14px 18px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:2px;box-shadow:var(--shadow);padding:10px 14px;display:flex;flex-direction:column;border-top-width:4px}
 .card b{font-size:30px;font-weight:700;line-height:1.1}
 .card span{text-transform:uppercase;font-size:12px;letter-spacing:.02em;font-weight:600;color:var(--muted)}
-.c-chuatim{border-top-color:#9b1c1c}.c-moi{border-top-color:#3b5f8f}.c-chuave{border-top-color:#9a6b00}.c-ton{border-top-color:#5e1f1f}
+.c-chuatim{border-top-color:#9b1c1c}.c-moi{border-top-color:#3b5f8f}.c-chuave{border-top-color:#9a6b00}.c-ton{border-top-color:#5e1f1f}.c-chokt{border-top-color:#1f6f78}
+.hint{font-size:12px;color:var(--muted);text-transform:none;font-weight:400;margin-top:2px}
 
 .filters{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:12px;background:var(--card);border:1px solid var(--line);border-radius:2px;box-shadow:var(--shadow);padding:10px 12px}
 .filters label{display:flex;flex-direction:column;font-size:13px;color:var(--muted);gap:2px;text-transform:uppercase;font-size:12px;letter-spacing:.02em;font-weight:600}
@@ -80,7 +81,7 @@ table.compact td > div + div{margin-top:3px}
 table.compact select,table.compact input.note,table.compact input.tg,table.compact input.wk{width:100%;min-width:0}
 table.compact input.wk{max-width:15ch;padding:4px 5px}
 table.compact textarea.auto{width:100%;resize:none;overflow:hidden;font-family:var(--serif);line-height:1.35;padding:4px 6px;display:block}
-table.compact select.s-moi,table.compact select.s-chuave,table.compact select.s-chuatim,table.compact select.s-datim,table.compact select.s-khieunai,table.compact select.s-mat{text-transform:none;font-size:13px;padding:3px 2px}
+table.compact select.s-moi,table.compact select.s-chuave,table.compact select.s-chuatim,table.compact select.s-datim,table.compact select.s-khieunai,table.compact select.s-mat,table.compact select.s-chokt,table.compact select.s-hong,table.compact select.s-def{text-transform:none;font-size:13px;padding:3px 2px}
 table.compact .wkbox{display:flex;width:100%}
 .mabig{font-family:var(--mono);font-size:15px;font-weight:700}
 .sub{font-size:12px;color:var(--muted);line-height:1.35}
@@ -91,7 +92,7 @@ table.compact .wkbox{display:flex;width:100%}
 .statnote{margin:-6px 0 12px;font-size:13px;font-style:italic;color:var(--muted)}
 .statnote button{font-size:13px;padding:2px 8px;margin-left:6px}
 
-.badge,select.s-moi,select.s-chuave,select.s-chuatim,select.s-datim,select.s-khieunai,select.s-mat,select.k-tsn,select.k-nvs,select.k-vl{border:2px solid currentColor;border-radius:3px;font-weight:700;text-transform:uppercase;font-size:12px;letter-spacing:.02em}
+.badge,select.s-moi,select.s-chuave,select.s-chuatim,select.s-datim,select.s-khieunai,select.s-mat,select.s-chokt,select.s-hong,select.s-def,select.k-tsn,select.k-nvs,select.k-vl{border:2px solid currentColor;border-radius:3px;font-weight:700;text-transform:uppercase;font-size:12px;letter-spacing:.02em}
 .badge{display:inline-block;padding:1px 7px;white-space:nowrap;transform:rotate(-1deg)}
 .s-chuatim{color:#8b1a1a;background:#f6dcd5}
 .s-chuave{color:#6b4700;background:#f5e6b5}
@@ -99,6 +100,9 @@ table.compact .wkbox{display:flex;width:100%}
 .s-datim{color:#24592b;background:#dcebd3}
 .s-khieunai{color:#5b2a74;background:#ebdcf0}
 .s-mat{color:#2e2e2e;background:#dedad1}
+.s-chokt{color:#1f6f78;background:#d8ecee}
+.s-hong{color:#8a3b12;background:#f6e0d2}
+.s-def{color:#3d3d3d;background:#e4e1da}
 .k-tsn{color:#1f3f73;background:#dfe8f3}
 .k-nvs{color:#8a3a08;background:#f7e0cb}
 .k-vl{color:#24592b;background:#dcebd3}

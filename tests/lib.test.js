@@ -45,4 +45,9 @@ eq([L.validateGian({ ten: 'shopee tuong vip', san: 'Shopee', owner: 'nhung' }, G
   L.validateGian({ ten: 'Gian Mới', san: 'Khác', owner: 'ai_do' }, GG, ['nhung']).error.message,
   L.validateGian({ ten: 'Gian Mới', san: 'Khác', nhom: 'newtea', owner: 'nhung', alias: 'A, B' }, GG.concat([{ ten: 'X', nhom: 'Newtea' }]), ['nhung']).gian],
   ['BAD_INPUT', 'Người phụ trách không tồn tại: ai_do', { ten: 'Gian Mới', san: 'Khác', nhom: 'Newtea', owner: 'nhung', alias: ['A', 'B'], active: true }]);
+eq([L.isValidState('Chờ kiểm tra'), L.isValidState('Hỏng hóc / Lỗi'), L.isClosedState('Hỏng hóc / Lỗi'), L.isOpenState('Chờ kiểm tra')], [true, true, true, true]);
+eq([L.isAutoCloseState('Chờ kiểm tra'), L.isAutoCloseState('Mới'), L.isAutoCloseState('Hỏng hóc / Lỗi')], [false, true, false]);
+const wh = L.weeklyApply([], L.weeklyDeltas(null, k('2026-10-05', 'Chờ kiểm tra')));
+L.weeklyApply(wh, L.weeklyDeltas(k('2026-10-05', 'Chờ kiểm tra'), k('2026-10-05', 'Hỏng hóc / Lỗi')));
+eq([wh[0].total, wh[0].hong, wh[0].found, L.statusList().map(s => s.ten).slice(3, 4)[0]], [1, 1, 0, 'Chờ kiểm tra']);
 console.log('OK: tất cả test qua');

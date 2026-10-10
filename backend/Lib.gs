@@ -1,9 +1,23 @@
 // Hàm thuần: không gọi API Apps Script, test được bằng Node.
-var OPEN_STATES = ['Mới', 'Chưa về kho', 'Chưa tìm thấy'];
-var CLOSED_STATES = ['Đã tìm thấy', 'Đã khiếu nại', 'Xác nhận mất'];
+// Định nghĩa trạng thái DUY NHẤT. dong: kết thúc; autoClose: tự đóng "Đã tìm thấy" khi mã vào kho;
+// thieu: tính vào số thiếu; counter: cột bộ đếm Weekly (chỉ trạng thái kết thúc).
+var STATUSES = [
+  { ten: 'Mới', dong: false, autoClose: true, thieu: true },
+  { ten: 'Chưa về kho', dong: false, autoClose: true, thieu: true },
+  { ten: 'Chưa tìm thấy', dong: false, autoClose: true, thieu: true },
+  { ten: 'Chờ kiểm tra', dong: false, autoClose: false, thieu: false },
+  { ten: 'Đã tìm thấy', dong: true, counter: 'found' },
+  { ten: 'Đã khiếu nại', dong: true, counter: 'complained' },
+  { ten: 'Xác nhận mất', dong: true, counter: 'lost' },
+  { ten: 'Hỏng hóc / Lỗi', dong: true, counter: 'hong' }
+];
+var AUTO_CLOSE_STATE = 'Đã tìm thấy', NEW_STATE = 'Mới';
+var OPEN_STATES = STATUSES.filter(function (s) { return !s.dong; }).map(function (s) { return s.ten; });
+var CLOSED_STATES = STATUSES.filter(function (s) { return s.dong; }).map(function (s) { return s.ten; });
 var LOAI_TEP = ['Trả hàng', 'Giao không thành công'];
-var COUNTER_BY_STATE = { 'Đã tìm thấy': 'found', 'Đã khiếu nại': 'complained', 'Xác nhận mất': 'lost' };
-var WEEKLY_FIELDS = ['total', 'found', 'complained', 'lost'];
+var COUNTER_BY_STATE = {};
+STATUSES.forEach(function (s) { if (s.counter) COUNTER_BY_STATE[s.ten] = s.counter; });
+var WEEKLY_FIELDS = ['total'].concat(STATUSES.filter(function (s) { return s.counter; }).map(function (s) { return s.counter; }));
 var EDITABLE_FIELDS = ['kho', 'trang_thai', 'ghi_chu', 'thoi_gian_tra', 'tuan', 'ly_do_tra'];
 var SAN_LIST = ['Shopee', 'TikTok', 'Khác'];
 var NHOM_ORDER = ['Shopee', 'TikTok', 'Newtea'];
@@ -62,6 +76,8 @@ function dedupeBy(items, keyFn) {
 function isOpenState(s) { return OPEN_STATES.indexOf(s) >= 0; }
 function isClosedState(s) { return CLOSED_STATES.indexOf(s) >= 0; }
 function isValidState(s) { return isOpenState(s) || isClosedState(s); }
+function isAutoCloseState(s) { return STATUSES.some(function (x) { return x.ten === s && x.autoClose; }); }
+function statusList() { return STATUSES.map(function (s) { return { ten: s.ten, dong: s.dong, thieu: !!s.thieu }; }); }
 
 function canEditGian(user, gian) {
   return !!user && (user.role === 'admin' || (user.gians || []).indexOf(gian) >= 0);
@@ -122,7 +138,11 @@ function weeklyApply(list, deltas) {
   list.forEach(function (w) { map[w.tuan_key + '|' + w.gian] = w; });
   deltas.forEach(function (d) {
     var k = d.tuan_key + '|' + d.gian;
-    if (!map[k]) { map[k] = { tuan: d.tuan, tuan_key: d.tuan_key, gian: d.gian, total: 0, found: 0, complained: 0, lost: 0 }; list.push(map[k]); }
+    if (!map[k]) {
+      map[k] = { tuan: d.tuan, tuan_key: d.tuan_key, gian: d.gian };
+      WEEKLY_FIELDS.forEach(function (f) { map[k][f] = 0; });
+      list.push(map[k]);
+    }
     map[k][d.field] = (Number(map[k][d.field]) || 0) + d.delta;
   });
   return list;

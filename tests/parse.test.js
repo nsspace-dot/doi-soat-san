@@ -54,4 +54,7 @@ const o2 = P.parseOldSheet(P.parseTsv(tsv2), { defaultSan: 'Shopee', gians: GI, 
 assert.deepStrictEqual([o2.errors, o2.rows.length, o2.rows.map(x => x.ma).join(), o2.joined.length], [0, 3, 'GIA0001,GIA0002,GIA0003', 1]);
 assert.deepStrictEqual([o2.rows[0].phan_loai, o2.rows[1].ly_do_tra, o2.rows[1].ten_sp, o2.rows[1].gian], ['Size M\nvị đào', 'Sai mẫu, giao nhầm màu', 'Lịch B', 'Shopee Newshop CN1']);
 assert.deepStrictEqual(o2.rows.map(x => x.loai_tep), ['Trả hàng', 'Trả hàng', 'Giao không thành công']);
+assert.deepStrictEqual([o2.rows[1].trang_thai, P.mapTrangThai('Hỏng hóc').tt, P.mapTrangThai('HỎNG HÓC / LỖI').tt, P.mapTrangThai('lỗi').tt], ['Chờ kiểm tra', 'Hỏng hóc / Lỗi', 'Hỏng hóc / Lỗi', 'Hỏng hóc / Lỗi']);
+const o3 = P.parseOldSheet(P.parseTsv(tsv2), { defaultSan: '', gians: GI, kho_list: [], today: '2026-10-10' });
+assert.deepStrictEqual([o3.noSan, o3.rows[0].gian, /không xác định được sàn/.test(o3.rows[1].error), o3.rows[1].error.indexOf('Dòng 8') === 0], [2, 'TikTok NewteaVN', true, true]);
 console.log('OK: parse test qua');

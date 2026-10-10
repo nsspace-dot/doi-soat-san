@@ -3,7 +3,7 @@ GET công khai: `?action=list`. POST: body JSON gửi `Content-Type: text/plain`
 Thành công: `{ok:true, ...}`. Lỗi: `{ok:false, code, message}` (message tiếng Việt).
 
 ## GET list
-→ `{cases[], khoMeta{lastUpdate,by,count}, config{kho_list[], nhom_list[], gians[{san,ten,nhom,owner,owner_name,alias[],active}]}, weekly[{tuan,tuan_key,gian,total,found,complained,lost}]}`
+→ `{cases[], khoMeta{lastUpdate,by,count}, config{kho_list[], nhom_list[], statuses[{ten,dong,thieu}], gians[{san,ten,nhom,owner,owner_name,alias[],active}]}, weekly[{tuan,tuan_key,gian,total,found,complained,lost,hong}]}`
 owner_name = tên hiển thị (cột name tab Users) của owner. Cache ~60s, xóa sau mỗi lần ghi. Case có đủ cột tab Cases (xem SETUP/Code.gs). Số ngày tồn: client tự tính từ created_at → closed_at/now.
 
 ## POST
@@ -24,7 +24,7 @@ owner_name = tên hiển thị (cột name tab Users) của owner. Cache ~60s, x
 - Gian: `san` = nền tảng (dò định dạng file), `nhom` = nhóm hiển thị (mặc định: owner `tam` → Newtea, còn lại = san). nhom_list: Shopee, TikTok, Newtea rồi các nhóm khác A→Z. Tên gian ≤ 60 ký tự, không trùng (bỏ qua hoa/thường, dấu); owner phải tồn tại. Gian tắt: ingest_san báo lỗi, đơn cũ vẫn hiện.
 - ly_do_tra: chuỗi ≤ 300 ký tự (dài hơn bị cắt), tùy chọn; mỗi case có ly_do_tra.
 - loai_tep: `Trả hàng` | `Giao không thành công`. kho: một giá trị trong kho_list hoặc rỗng.
-- Trạng thái mở: Mới, Chưa về kho, Chưa tìm thấy. Đóng: Đã tìm thấy, Đã khiếu nại, Xác nhận mất. Đóng→mở chỉ admin.
+- Trạng thái (theo thứ tự `config.statuses`): mở = Mới, Chưa về kho, Chưa tìm thấy, Chờ kiểm tra; kết thúc = Đã tìm thấy, Đã khiếu nại, Xác nhận mất, Hỏng hóc / Lỗi. Đóng→mở chỉ admin. Mã vào kho tự đóng "Đã tìm thấy" cho đơn mở, TRỪ "Chờ kiểm tra" (không tính vào số thiếu). Bộ đếm Weekly: found/complained/lost/hong.
 - staff chỉ thao tác gian của mình (ingest_san, update_cases); admin mọi gian. ingest_kho: mọi user active.
 - update_cases xử lý từng dòng: dòng lỗi nằm trong `errors`, dòng hợp lệ vẫn được lưu.
 - dry_run=true: chỉ tính kết quả, không ghi.

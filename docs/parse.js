@@ -221,7 +221,7 @@
 
   // ---------- Nhập từ Sheet cũ ----------
   var fn = function (x) { return fold(x).trim(); };
-  P.STATES = ['Mới', 'Chưa về kho', 'Chưa tìm thấy', 'Đã tìm thấy', 'Đã khiếu nại', 'Xác nhận mất'];
+  P.STATES = ['Mới', 'Chưa về kho', 'Chưa tìm thấy', 'Chờ kiểm tra', 'Đã tìm thấy', 'Đã khiếu nại', 'Xác nhận mất', 'Hỏng hóc / Lỗi'];
 
   // TSV dán từ Google Sheet/Excel: ô trong ngoặc kép có thể chứa tab, xuống dòng, "" là dấu ".
   P.parseTsv = function (text) {
@@ -270,8 +270,10 @@
   };
   P.mapTrangThai = function (raw) {
     var f = fn(raw);
-    if (!f || f === 'CHO KIEM TRA') return { tt: 'Mới' };
+    if (!f) return { tt: 'Mới' };
     if (f === 'DA NHAN KHO') return { tt: 'Đã tìm thấy' };
+    if (f === 'CHO KIEM TRA') return { tt: 'Chờ kiểm tra' };
+    if (['HONG HOC LOI', 'HONG HOC', 'LOI', 'HONG'].indexOf(f) >= 0) return { tt: 'Hỏng hóc / Lỗi' };
     var s = P.STATES.filter(function (x) { return fn(x) === f; })[0];
     return s ? { tt: s } : { tt: 'Mới', odd: true };
   };
@@ -301,7 +303,7 @@
       phan_loai: f(['phân loại']), tg: f(['thời gian trả']), tt: f(['trạng thái'], ['kho']), kho: f(['=kho', 'kho'], ['trạng thái']),
       ghi_chu: f(['ghi chú']), mdh: f(['mã đơn hàng']), dvvc: f(['đơn vị vận chuyển', 'đvvc'])
     };
-    var out = { rows: [], noMa: 0, dup: 0, unmatched: {}, inferred: 0, odd: 0, badKho: 0, noKho: 0, hasLoai: c.loai !== undefined, errors: 0, joined: [] };
+    var out = { rows: [], noMa: 0, dup: 0, unmatched: {}, inferred: 0, odd: 0, badKho: 0, noKho: 0, hasLoai: c.loai !== undefined, errors: 0, joined: [], noSan: 0 };
     var seen = {}, lastTuan = '', manual = o.manual || {};
     var blank = function (a) { return !(a || []).some(function (x) { return String(x == null ? '' : x).trim(); }); };
     for (var i = h.headerRow + 1; i < aoa.length; i++) {
@@ -339,8 +341,11 @@
       var kh = P.normalizeKho(g('kho'), o.kho_list);
       row.kho = kh.kho;
       if (kh.bad) out.badKho++;
-      var gg = manual[row.gianRaw] ? o.gians.filter(function (x) { return x.ten === manual[row.gianRaw]; })[0] : P.resolveGian(row.gianRaw, o.defaultSan, o.gians);
-      if (gg) { row.gian = gg.ten; if (!row.kho && gg.nhom !== 'Newtea') out.noKho++; }
+      // defaultSan rỗng = "Tự nhận": bắt buộc có tiền tố TIKTOK/SHOPEE trong tên gian.
+      var noSan = !o.defaultSan && !manual[row.gianRaw] && !/^(TIKTOK|SHOPEE)\s/.test(fn(row.gianRaw));
+      var gg = noSan ? null : manual[row.gianRaw] ? o.gians.filter(function (x) { return x.ten === manual[row.gianRaw]; })[0] : P.resolveGian(row.gianRaw, o.defaultSan, o.gians);
+      if (noSan) { out.noSan++; row.error = 'Dòng ' + row.line + ': không xác định được sàn (Gian hàng "' + (row.gianRaw || '(trống)') + '" thiếu tiền tố TIKTOK/SHOPEE)'; }
+      else if (gg) { row.gian = gg.ten; if (!row.kho && gg.nhom !== 'Newtea') out.noKho++; }
       else { out.unmatched[row.gianRaw] = (out.unmatched[row.gianRaw] || 0) + 1; row.error = 'Chưa chọn gian cho "' + (row.gianRaw || '(trống)') + '"'; }
       if (!w) row.error = (row.error ? row.error + '; ' : '') + 'Tuần không hợp lệ: "' + lastTuan + '"';
       if (row.error) out.errors++;
