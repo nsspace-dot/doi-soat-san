@@ -5,7 +5,7 @@ Hệ thống quản lý đơn đối soát lệch Shopee/TikTok: so file mã v�
 ## Cấu trúc
 - `backend/` – code Apps Script: nguồn `Lib.gs` + `Code.gs`; dán file gộp `AppsScript.gs` (sinh bằng `node tools/build.js`). Xem `backend/SETUP.md`, `backend/API.md`.
 - `docs/` – giao diện web tĩnh (GitHub Pages: branch main, thư mục /docs). `legacy/` – tool cũ, chỉ để tham khảo.
-- `tests/` – `node tests/lib.test.js` và `node tests/parse.test.js`.
+- `tests/` – `node tests/lib.test.js`, `node tests/parse.test.js`, `node tests/export.test.js`.
 
 ## Lưu ý
 - KHÔNG commit file Excel/CSV thật (đã chặn trong `.gitignore`).

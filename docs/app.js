@@ -151,7 +151,10 @@
       if (!f.closed && isClosed(c) && f.tt !== c.trang_thai) return false;
       if (f.tt && c.trang_thai !== f.tt) return false;
       return base(c);
-    }).sort(function (a, b) { return String(b.tuan_key || '').localeCompare(String(a.tuan_key || '')) || String(a.created_at).localeCompare(String(b.created_at)); });
+    }).sort(sortCases);
+  }
+  function sortCases(a, b) {
+    return String(b.tuan_key || '').localeCompare(String(a.tuan_key || '')) || String(a.created_at).localeCompare(String(b.created_at));
   }
   function clearFilters() {
     ['fSan', 'fGian', 'fKho', 'fTuan', 'fTt', 'fOwner', 'fMa'].forEach(function (id) { $(id).value = ''; });
@@ -186,6 +189,8 @@
     if (S.page > pages) S.page = pages;
     var view = rows.slice((S.page - 1) * PAGE, S.page * PAGE), own = owners(), auth = !!S.user;
     $('fCount').textContent = rows.length + ' đơn';
+    $('btnExport').textContent = '⬇️ Tải theo bộ lọc (' + rows.length + ')';
+    $('btnExport').disabled = !rows.length;
     $('pInfo').textContent = 'Trang ' + S.page + '/' + pages;
     $('pPrev').disabled = S.page <= 1; $('pNext').disabled = S.page >= pages;
     var editable = view.filter(canEdit), allSel = editable.length && editable.every(function (c) { return S.sel[c.ma]; });
@@ -572,6 +577,43 @@
     });
   }
 
+  // ---------- Tải Excel theo bộ lọc ----------
+  // Xuất đúng các dòng đang thấy (mọi trang, đúng thứ tự); có dòng tick thì hỏi tải phần đã chọn hay toàn bộ.
+  function onExport() {
+    var rows = filtered(), selMa = Object.keys(S.sel);
+    if (!selMa.length) return doExport(rows, 'Tất cả ' + rows.length + ' dòng theo bộ lọc');
+    var sel = S.data.cases.filter(function (c) { return S.sel[c.ma]; }).sort(sortCases);
+    $('expSel').textContent = 'Tải ' + sel.length + ' dòng đã chọn';
+    $('expAll').textContent = 'Tải tất cả ' + rows.length + ' dòng theo bộ lọc';
+    $('expAll').disabled = !rows.length;
+    $('expSel').onclick = function () { $('dlgExport').close(); doExport(sel, sel.length + ' dòng đã chọn'); };
+    $('expAll').onclick = function () { $('dlgExport').close(); doExport(rows, 'Tất cả ' + rows.length + ' dòng theo bộ lọc'); };
+    $('dlgExport').showModal();
+  }
+  function exportInfo(scope, n, now) {
+    var f = filterState(), txt = function (id) { var o = $(id).selectedOptions[0]; return o && o.value ? o.textContent : 'Tất cả'; };
+    return [['Sàn', txt('fSan')], ['Gian', txt('fGian')], ['KHO', txt('fKho')], ['Tuần', txt('fTuan')], ['Trạng thái', txt('fTt')],
+      ['Phụ trách', txt('fOwner')], ['Mã vận đơn tìm', f.codes.join(' ') || '(không)'], ['Hiện đơn đã đóng', f.closed ? 'Có' : 'Không'],
+      ['Phạm vi', scope], ['Người xuất', S.user ? S.user.name + ' (' + S.user.username + ')' : 'Khách (chưa đăng nhập)'],
+      ['Thời điểm xuất', Export.fmtNow(now)], ['Tổng số dòng', n]];
+  }
+  function doExport(cases, scope) {
+    if (!cases.length) return msg('Không có dòng nào để tải', 'err');
+    try {
+      var now = new Date(), own = owners();
+      var rows = Export.caseRows(cases, { nhomOf: nhomOf, ownerOf: function (g) { return own[g] || ''; }, days: days });
+      var data = Export.workbook(rows, exportInfo(scope, cases.length, now), XLSX.CFB);
+      var parts = ['fGian', 'fSan', 'fTuan', 'fTt', 'fKho', 'fOwner'].map(function (id) { var o = $(id).selectedOptions[0]; return o && o.value ? o.textContent : ''; });
+      if ($('fGian').value) parts[1] = '';
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+      a.download = Export.fileName(scope.indexOf('đã chọn') > 0 ? ['Da-chon'].concat(parts) : parts, now);
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+      msg('Đã tải ' + cases.length + ' dòng: ' + a.download, 'ok');
+    } catch (e) { msg('Không tạo được file Excel: ' + e.message, 'err'); }
+  }
+
   // ---------- Sự kiện ----------
   function bind() {
     $('btnRefresh').onclick = function () { refresh(); };
@@ -615,6 +657,7 @@
     $('fSan').onchange = function () { S.page = 1; $('fGian').value = ''; fillFilters(); render(); };
     $('fMa').oninput = function () { S.page = 1; render(); };
     $('pPrev').onclick = function () { S.page--; render(); };
+    $('btnExport').onclick = onExport;
     $('btnView').onclick = function () { setView(S.view === 'full' ? 'compact' : 'full'); };
     $('btnClearF').onclick = clearFilters;
     $('pNext').onclick = function () { S.page++; render(); };

@@ -44,6 +44,7 @@
     <label class="chk"><input type="checkbox" id="fClosed"> Hiện đơn đã đóng (giữ 14 ngày)</label>
     <span id="fCount" class="muted"></span>
     <button id="btnView" type="button">Dạng bảng đầy đủ</button>
+    <button id="btnExport" type="button" class="primary" disabled>⬇️ Tải theo bộ lọc (0)</button>
   </section>
   <section id="bulk" class="bulk" hidden>
     <b id="bulkCount"></b>
@@ -127,6 +128,15 @@
     <div class="row"><button type="button" data-close>Hủy</button><button class="primary" type="submit">Đăng nhập</button></div>
   </form>
 </dialog>
+<dialog id="dlgExport">
+  <form method="dialog">
+    <h3>Tải file Excel</h3>
+    <p>Bạn đang tick chọn một số dòng. Muốn tải phần nào?</p>
+    <button type="button" id="expSel" class="primary"></button>
+    <button type="button" id="expAll"></button>
+    <div class="row"><button type="button" data-close>Hủy</button></div>
+  </form>
+</dialog>
 <dialog id="dlgPin">
   <form id="formPin" method="dialog">
     <h3>Đổi PIN</h3>
@@ -141,6 +151,7 @@
 <script src="config.js"></script>
 <script src="vendor/xlsx.full.min.js"></script>
 <script src="parse.js"></script>
+<script src="export.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
