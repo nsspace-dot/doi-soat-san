@@ -600,8 +600,7 @@
   function doExport(cases, scope) {
     if (!cases.length) return msg('Không có dòng nào để tải', 'err');
     try {
-      var now = new Date(), own = owners();
-      var rows = Export.caseRows(cases, { nhomOf: nhomOf, ownerOf: function (g) { return own[g] || ''; }, days: days });
+      var now = new Date(), rows = Export.caseRows(cases);
       var data = Export.workbook(rows, exportInfo(scope, cases.length, now), XLSX.CFB);
       var parts = ['fGian', 'fSan', 'fTuan', 'fTt', 'fKho', 'fOwner'].map(function (id) { var o = $(id).selectedOptions[0]; return o && o.value ? o.textContent : ''; });
       if ($('fGian').value) parts[1] = '';

@@ -2,10 +2,17 @@
 // Cần CFB của SheetJS (XLSX.CFB) để nén zip.
 (function (root) {
   var E = {};
-  E.HEADERS = ['Tuần', 'Gian hàng', 'Sàn', 'Mã vận đơn', 'Mã đơn hàng', 'Loại trả', 'Lý do trả', 'Sản phẩm', 'Phân loại', 'Kho',
-    'Thời gian trả trên hệ thống', 'Trạng thái', 'Ghi chú', 'Phụ trách', 'Số ngày tồn'];
-  E.WIDTHS = [15, 22, 9, 22, 20, 20, 32, 50, 24, 7, 22, 15, 28, 12, 10];
-  var TEXT_COLS = [3, 4], WRAP_COLS = [6, 7, 8, 12];
+  E.HEADERS = ['Tuần đối soát', 'KHO', 'Mã vận đơn', 'Gian hàng TikTok', 'Loại tệp tin', 'Tên sản phẩm', 'Phân loại', 'Thời gian trả trên hệ thống'];
+  var TEXT_COLS = [2], WRAP_COLS = [5], MAX_W = [16, 8, 30, 30, 24, 55, 30, 22];
+  // Độ rộng cột theo nội dung (giới hạn trên mỗi cột; cột xuống dòng dừng ở mức tối đa).
+  E.autoWidths = function (rows) {
+    return E.HEADERS.map(function (h, ci) {
+      var w = rows.reduce(function (m, r) {
+        return Math.max(m, String(r[ci] == null ? '' : r[ci]).split('\n').reduce(function (a, l) { return Math.max(a, l.length); }, 0));
+      }, h.length);
+      return Math.min(MAX_W[ci], Math.max(6, w + 2));
+    });
+  };
 
   function pad(n) { return (n < 10 ? '0' : '') + n; }
   E.fmtNow = function (d) {
@@ -33,13 +40,11 @@
     return s;
   };
 
-  // ctx: {nhomOf(gian), ownerOf(gian), days(case)}
-  E.caseRows = function (cases, ctx) {
+  // 8 cột: tuan, kho, ma, gian, loai_tep, ten_sp, phan_loai, thoi_gian_tra.
+  E.caseRows = function (cases) {
     return cases.map(function (c) {
       var y = /^(\d{4})/.exec(c.tuan_key || '');
-      var d = ctx.days(c);
-      return [c.tuan, c.gian, ctx.nhomOf(c.gian) || c.san, c.ma, c.ma_don_hang, c.loai_tep, c.ly_do_tra, c.ten_sp, c.phan_loai, c.kho,
-        E.fmtDateTime(c.thoi_gian_tra, y && y[1]), c.trang_thai, c.ghi_chu, ctx.ownerOf(c.gian), d === '' ? '' : +d];
+      return [c.tuan, c.kho, c.ma, c.gian, c.loai_tep, c.ten_sp, c.phan_loai, E.fmtDateTime(c.thoi_gian_tra, y && y[1])];
     });
   };
 
@@ -124,7 +129,7 @@
   // Dựng 2 sheet "Đối soát" + "Bộ lọc". info: [[nhãn, giá trị], ...]
   E.workbook = function (rows, info, CFB) {
     return E.buildXlsx([
-      { name: 'Đối soát', rows: [E.HEADERS].concat(rows), header: true, freeze: true, filter: true, widths: E.WIDTHS, textCols: TEXT_COLS, wrapCols: WRAP_COLS },
+      { name: 'Đối soát', rows: [E.HEADERS].concat(rows), header: true, freeze: true, filter: true, widths: E.autoWidths(rows), textCols: TEXT_COLS, wrapCols: WRAP_COLS },
       { name: 'Bộ lọc', rows: [['Mục', 'Giá trị']].concat(info), header: true, widths: [24, 60], wrapCols: [1] }
     ], CFB);
   };
