@@ -543,7 +543,7 @@ function actIngestSan(user, b) {
     else if (kho[r.ma]) res.matchedKho++;
     else {
       add.push([r.ma, tuan, gian.san, gian.ten, r.loai_tep, s(r.ten_sp), s(r.phan_loai), s(r.ma_don_hang), s(r.dvvc), '', NEW_STATE,
-        '', '', now, user.username, '', now, user.username, wk.tuan_key, clipLyDo(r.ly_do_tra)]);
+        s(r.thoi_gian_tra), '', now, user.username, '', now, user.username, wk.tuan_key, clipLyDo(r.ly_do_tra)]);
     }
   });
   res.created = add.length;

@@ -11,8 +11,13 @@
   };
 
   // Chống mã 12-17 số bị đọc thành 1.23E+15.
+  function pad2(n) { return (n < 10 ? '0' : '') + n; }
   P.cellToStr = function (cell) {
     if (!cell) return '';
+    if (cell.v instanceof Date) {
+      var d = new Date(Math.round(cell.v.getTime() / 1000) * 1000);
+      return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
+    }
     if (cell.t === 'n' || typeof cell.v === 'number') {
       if (cell.w && /^\d+$/.test(String(cell.w).trim())) return String(cell.w).trim();
       return String(Math.round(cell.v));
@@ -131,11 +136,14 @@
     return d;
   };
 
+  var TIME_KWS = ['thời gian trả', 'return request time', 'time requested', 'request time', 'return created time', 'return time',
+    'failed delivery time', 'delivery failed time', 'thời gian yêu cầu', 'ngày yêu cầu', 'ngày trả', 'requested time'];
   var LYDO_KWS = ['return reason', 'cancel reason', 'lý do trả', 'lý do giao không thành công', 'lý do hoàn', 'reason', 'lý do'];
   P.parseSan = function (aoa) {
     var d = P.detectSan(aoa);
     if (d.error) return d;
     d.ly_do = P.findCol(d.hMap, LYDO_KWS, ['ghi chú']);
+    d.tg = P.findCol(d.hMap, TIME_KWS, ['update', 'cập nhật']);
     var rows = [], total = 0, noMa = 0, badMa = 0;
     var g = function (r, i) { return i === undefined ? '' : String(r[i] == null ? '' : r[i]).trim(); };
     for (var i = d.headerRow + 1; i < aoa.length; i++) {
@@ -146,7 +154,7 @@
       if (!raw) { noMa++; continue; }
       if (!P.isLikelyRealTrackingId(raw)) { badMa++; continue; }
       rows.push({ ma: P.normalizeMa(raw), loai_tep: d.loai_tep, ten_sp: g(r, d.ten_sp), phan_loai: g(r, d.phan_loai),
-        ma_don_hang: g(r, d.ma_don_hang), dvvc: g(r, d.dvvc), ly_do_tra: g(r, d.ly_do).slice(0, 300) });
+        ma_don_hang: g(r, d.ma_don_hang), dvvc: g(r, d.dvvc), ly_do_tra: g(r, d.ly_do).slice(0, 300), thoi_gian_tra: g(r, d.tg) });
     }
     return { san: d.san, loai_tep: d.loai_tep, total: total, rows: rows, skipped: { noMa: noMa, badMa: badMa } };
   };
@@ -352,6 +360,19 @@
       out.rows.push(row);
     }
     return out;
+  };
+
+  // ---------- Chuẩn hóa lý do trả theo bảng LYDO_MAP ----------
+  var lydoIdx = null, lydoSrc = null, lk = function (v) { return fn(String(v).replace(/['\u2019`]/g, '')); };
+  P.normLyDo = function (raw, map) {
+    var t = String(raw == null ? '' : raw).trim();
+    if (!t) return { ten: '', chuan: true };
+    if (lydoSrc !== map) {
+      lydoSrc = map; lydoIdx = {};
+      Object.keys(map || {}).forEach(function (k) { [k].concat(map[k] || []).forEach(function (v) { lydoIdx[lk(v)] = k; }); });
+    }
+    var k = lydoIdx[lk(t)];
+    return k ? { ten: k, chuan: true } : { ten: t.replace(/\s+/g, ' ').replace(/[.\s]+$/, ''), chuan: false };
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = P;

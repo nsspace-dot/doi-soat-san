@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>Đối soát đơn lệch</title>
-<link rel="stylesheet" href="styles.css?v=20261019b">
+<link rel="stylesheet" href="styles.css?v=20261019c">
 </head>
 <body>
 <header>
-  <div class="brand"><h1>❖ Đối soát đơn lệch Shopee · TikTok ❖</h1><div id="khoMeta" class="meta"></div><div class="meta">Phiên bản giao diện: 19/10/2026 · Xuất Excel 8 cột</div></div>
+  <div class="brand"><h1>❖ Đối soát đơn lệch Shopee · TikTok ❖</h1><div id="khoMeta" class="meta"></div><div class="meta">Phiên bản giao diện: 19/10/2026 (b) · Biểu đồ · Sắp xếp · Chép mã</div></div>
   <div class="actions">
     <button id="btnRefresh">Làm mới</button>
     <button id="btnUpload" class="auth" hidden>Tải file</button>
@@ -40,11 +40,20 @@
     <label>Tuần<select id="fTuan"></select></label>
     <label>Trạng thái<select id="fTt"></select></label>
     <label>Phụ trách<select id="fOwner"></select></label>
+    <details class="ms" id="fLoai"><summary>Loại: Tất cả</summary><div class="msl"></div></details>
+    <details class="ms" id="fLyDo"><summary>Lý do: Tất cả</summary><div class="msl"></div></details>
     <label class="grow">Mã vận đơn<textarea id="fMa" rows="1" placeholder="Dán 1 hoặc nhiều mã (cách nhau dòng/dấu cách)"></textarea></label>
     <label class="chk"><input type="checkbox" id="fClosed"> Hiện đơn đã đóng (giữ 14 ngày)</label>
     <span id="fCount" class="muted"></span>
     <button id="btnView" type="button">Dạng bảng đầy đủ</button>
     <button id="btnExport" type="button" class="primary" disabled>↓ Tải Excel theo bộ lọc (0)</button>
+    <button id="btnCopyAll" type="button" disabled>📋 Chép tất cả mã vận đơn đang lọc (0)</button>
+    <button id="btnCharts" type="button">Ẩn biểu đồ</button>
+  </section>
+  <section id="chartBox" class="charts">
+    <div class="chartcard"><h2>Số đơn theo gian · chia theo Loại</h2><div class="chartwrap"><canvas id="chLoai"></canvas></div></div>
+    <div class="chartcard"><h2>Số đơn theo gian · chia theo KHO</h2><div class="chartwrap"><canvas id="chKho"></canvas></div></div>
+    <p id="chartMsg" class="muted"></p>
   </section>
   <section id="bulk" class="bulk" hidden>
     <b id="bulkCount"></b>
@@ -148,10 +157,12 @@
   </form>
 </dialog>
 
-<script src="config.js?v=20261019b"></script>
+<script src="vendor/chart-4.4.4.umd.min.js"></script>
+<script src="lydo-map.js?v=20261019c"></script>
+<script src="config.js?v=20261019c"></script>
 <script src="vendor/xlsx.full.min.js"></script>
-<script src="parse.js?v=20261019b"></script>
-<script src="export.js?v=20261019b"></script>
-<script src="app.js?v=20261019b"></script>
+<script src="parse.js?v=20261019c"></script>
+<script src="export.js?v=20261019c"></script>
+<script src="app.js?v=20261019c"></script>
 </body>
 </html>

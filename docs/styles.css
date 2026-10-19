@@ -74,7 +74,7 @@ tr.closed td{color:var(--muted);font-style:italic}
 tbody tr.rowerr td{background:#f3d3cc}
 .mono{font-family:var(--mono)}
 table.full td{white-space:nowrap}table.full .spname{min-width:220px;max-width:340px}
-table.compact{table-layout:fixed;width:100%;min-width:0}
+table.compact{table-layout:fixed;width:100%;min-width:1180px}
 table.compact th{white-space:normal;padding:6px 8px;line-height:1.25}
 table.compact td{padding:6px 8px;white-space:normal;overflow-wrap:anywhere;word-break:break-word}
 table.compact td > div + div{margin-top:3px}
@@ -125,3 +125,21 @@ dialog input{font-size:16px}
 dialog .row{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
 
 @media (max-width:700px){h1{font-size:20px}header{position:static}main{padding:10px}.card b{font-size:24px}}
+
+.sortable{cursor:pointer;white-space:normal;border-bottom:1px dotted rgba(244,236,216,.6)}
+.sortable:hover,.sortable.on{color:#fff;border-bottom-style:solid}.sortable .sh{opacity:.55;font-size:11px}
+button.cp{padding:0 4px;font-size:13px;line-height:1.3;border-color:var(--line-soft);vertical-align:middle;min-width:26px;min-height:24px}
+button.cp.done,button.done{background:var(--moss);color:var(--cream);border-color:var(--moss);font-size:12px}
+.odd{display:inline-block;font-size:12px;color:#8a3b12;border:1px dashed #8a3b12;border-radius:2px;padding:0 4px;line-height:1.4}
+.ms{position:relative;align-self:flex-end}
+.ms summary{list-style:none;cursor:pointer;padding:5px 9px;border:1px solid var(--line);border-radius:2px;background:var(--card);font-size:14px;white-space:nowrap}
+.ms summary::-webkit-details-marker{display:none}.ms summary::after{content:' ▾'}
+.ms[open] .msl{position:absolute;z-index:6;top:100%;left:0;min-width:240px;max-width:min(420px,90vw);max-height:320px;overflow:auto;background:var(--card);border:1px solid var(--line);box-shadow:0 4px 14px rgba(43,33,24,.25);padding:6px 8px}
+.msl label{display:flex !important;flex-direction:row !important;align-items:flex-start;gap:6px;padding:3px 0;font-size:14px !important;text-transform:none !important;font-weight:400 !important;color:var(--ink) !important}
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.chartcard{background:var(--card);border:1px solid var(--line);border-radius:2px;box-shadow:var(--shadow);padding:10px 12px}
+.chartcard h2{font-size:16px}.chartwrap{position:relative;width:100%}
+#chartMsg:empty{display:none}
+table.compact textarea.tg{font-family:var(--serif)}
+table.full input.tg{width:170px}.tgv{white-space:normal}
+@media (max-width:900px){.charts{grid-template-columns:1fr}}

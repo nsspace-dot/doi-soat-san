@@ -19,28 +19,34 @@
     return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
   };
 
-  // Chuẩn hóa thời gian về dd/mm/yyyy HH:mm:ss; không nhận ra thì giữ nguyên chữ gốc.
+  // Chuẩn hóa thời gian về dd/mm/yyyy HH:mm (thêm :ss nếu nguồn có giây). Nhận: chuỗi ISO, dd/mm[/yyyy] + giờ
+  // ở bất kỳ thứ tự nào, số ngày Excel. Không nhận ra thì trả nguyên văn gốc.
   E.fmtDateTime = function (v, fallbackYear) {
     var s = String(v == null ? '' : v).trim(), m;
     if (!s) return '';
     var out = function (y, mo, d, h, mi, se) {
       var dt = new Date(Date.UTC(+y, mo - 1, +d, +h || 0, +mi || 0, +se || 0));
-      if (dt.getUTCMonth() !== mo - 1 || dt.getUTCDate() !== +d) return s;
-      return pad(+d) + '/' + pad(+mo) + '/' + y + ' ' + pad(+h || 0) + ':' + pad(+mi || 0) + ':' + pad(+se || 0);
+      if (dt.getUTCMonth() !== mo - 1 || dt.getUTCDate() !== +d || +h > 23 || +mi > 59) return s;
+      return pad(+d) + '/' + pad(+mo) + '/' + y + ' ' + pad(+h || 0) + ':' + pad(+mi || 0) + (se != null && se !== '' ? ':' + pad(+se) : '');
     };
-    if ((m = /^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/.exec(s))) return out(m[1], +m[2], m[3], m[4], m[5], m[6]);
-    // Ngày và giờ ở bất kỳ thứ tự nào: "14:56:38, 14/10/2026", "14/10 14:56", "14.10.2026 14h56"...
+    if ((m = /^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})(?:[ T]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/.exec(s))) return out(m[1], +m[2], m[3], m[4], m[5], m[6]);
+    if (/^\d{5}(\.\d+)?$/.test(s) && +s > 20000 && +s < 80000) {
+      var t = new Date(Math.round((+s - 25569) * 86400) * 1000), sec = t.getUTCSeconds();
+      return out(t.getUTCFullYear(), t.getUTCMonth() + 1, t.getUTCDate(), t.getUTCHours(), t.getUTCMinutes(), sec ? sec : null);
+    }
+    // "14:56:38, 14/10/2026", "14/10 14:56", "14.10.2026 14h56"...
     var dm = /(?:^|[^\d:])(\d{1,2})[\/.\-](\d{1,2})(?:[\/.\-](\d{2,4}))?(?![\d:])/.exec(' ' + s);
     if (dm) {
       var tm = /(\d{1,2})[:h](\d{2})(?::(\d{2}))?/.exec(s.replace(dm[0].trim(), ' '));
       var y = dm[3] ? (dm[3].length === 2 ? '20' + dm[3] : dm[3]) : String(fallbackYear || new Date().getFullYear());
       return out(y, +dm[2], dm[1], tm && tm[1], tm && tm[2], tm && tm[3]);
     }
-    if (/^\d{5}(\.\d+)?$/.test(s) && +s > 20000 && +s < 80000) {
-      var t = new Date(Math.round((+s - 25569) * 86400000));
-      return out(t.getUTCFullYear(), t.getUTCMonth() + 1, t.getUTCDate(), t.getUTCHours(), t.getUTCMinutes(), t.getUTCSeconds());
-    }
     return s;
+  };
+  // Khóa sắp xếp yyyymmddHHMMSS (rỗng nếu không đọc được).
+  E.dateKey = function (v, fallbackYear) {
+    var m = /^(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2})(?::(\d{2}))?$/.exec(E.fmtDateTime(v, fallbackYear));
+    return m ? m[3] + m[2] + m[1] + m[4] + m[5] + (m[6] || '00') : '';
   };
 
   // 8 cột: tuan, kho, ma, gian, loai_tep, ten_sp, phan_loai, thoi_gian_tra.

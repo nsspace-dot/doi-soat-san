@@ -13,7 +13,7 @@ owner_name = tên hiển thị (cột name tab Users) của owner. Cache ~60s, x
 | me | token | user |
 | change_pin | token, old_pin, new_pin (≥6) | {} |
 | ingest_kho | token, codes[] (≤20.000) | read, dupInFile, existed, added, autoClosed |
-| ingest_san | token, tuan ("DD/MM - DD/MM"), gian (tên đầy đủ), rows[{ma, loai_tep, ten_sp, phan_loai, ma_don_hang, dvvc, ly_do_tra?}], dry_run | read, dupInFile, existedCase, existedClosed, matchedKho, created, khoLastUpdate |
+| ingest_san | token, tuan ("DD/MM - DD/MM"), gian (tên đầy đủ), rows[{ma, loai_tep, ten_sp, phan_loai, ma_don_hang, dvvc, ly_do_tra?, thoi_gian_tra?}], dry_run | read, dupInFile, existedCase, existedClosed, matchedKho, created, khoLastUpdate |
 | update_cases | token, items[{ma, fields{kho, trang_thai, ghi_chu, thoi_gian_tra, tuan, ly_do_tra}}] | updated, errors[{ma,code,message}] |
 | admin_upsert_user | token (admin), username, name?, role?, gians?, pin?, active? | user |
 | admin_upsert_gian | token (admin), ten, san (Shopee/TikTok/Khác), nhom, owner, alias[], active | gian, created (không xóa được gian, chỉ tắt) |

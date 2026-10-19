@@ -9,7 +9,7 @@ const tt = [
 ];
 const r1 = P.parseSan(tt);
 assert.deepStrictEqual([r1.san, r1.loai_tep, r1.total, r1.rows.length, r1.skipped.noMa, r1.skipped.badMa], ['TikTok', 'Trả hàng', 3, 1, 1, 1]);
-assert.deepStrictEqual(r1.rows[0], { ma: '852123456789012345', loai_tep: 'Trả hàng', ten_sp: 'Lịch 2027', phan_loai: 'Đỏ', ma_don_hang: '580001', dvvc: 'J&T', ly_do_tra: '' });
+assert.deepStrictEqual(r1.rows[0], { ma: '852123456789012345', loai_tep: 'Trả hàng', ten_sp: 'Lịch 2027', phan_loai: 'Đỏ', ma_don_hang: '580001', dvvc: 'J&T', ly_do_tra: '', thoi_gian_tra: '' });
 
 const sp = [
   ['Báo cáo trả hàng'], [],
@@ -57,4 +57,8 @@ assert.deepStrictEqual(o2.rows.map(x => x.loai_tep), ['Trả hàng', 'Trả hàn
 assert.deepStrictEqual([o2.rows[1].trang_thai, P.mapTrangThai('Hỏng hóc').tt, P.mapTrangThai('HỎNG HÓC / LỖI').tt, P.mapTrangThai('lỗi').tt], ['Chờ kiểm tra', 'Hỏng hóc / Lỗi', 'Hỏng hóc / Lỗi', 'Hỏng hóc / Lỗi']);
 const o3 = P.parseOldSheet(P.parseTsv(tsv2), { defaultSan: '', gians: GI, kho_list: [], today: '2026-10-10' });
 assert.deepStrictEqual([o3.noSan, o3.rows[0].gian, /không xác định được sàn/.test(o3.rows[1].error), o3.rows[1].error.indexOf('Dòng 8') === 0], [2, 'TikTok NewteaVN', true, true]);
+const LM = { 'Không đúng mô tả': ["Product doesn't match description", 'Sản phẩm không đúng mô tả'] };
+assert.deepStrictEqual([P.normLyDo('  product DOESN\'T match   description. ', LM), P.normLyDo('San pham khong dung mo ta', LM), P.normLyDo('Lý do lạ.', LM).chuan, P.normLyDo('Lý do lạ.', LM).ten],
+  [{ ten: 'Không đúng mô tả', chuan: true }, { ten: 'Không đúng mô tả', chuan: true }, false, 'Lý do lạ']);
+assert.strictEqual(P.cellToStr({ t: 'd', v: new Date(2026, 9, 14, 14, 56, 38) }), '2026-10-14 14:56:38');
 console.log('OK: parse test qua');

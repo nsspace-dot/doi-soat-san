@@ -11,7 +11,7 @@
   var ST_CLS = { 'Mới': 's-moi', 'Chưa về kho': 's-chuave', 'Chưa tìm thấy': 's-chuatim', 'Đã tìm thấy': 's-datim', 'Đã khiếu nại': 's-khieunai', 'Xác nhận mất': 's-mat', 'Chờ kiểm tra': 's-chokt', 'Hỏng hóc / Lỗi': 's-hong' };
   var KHO_CLS = { TSN: 'k-tsn', NVS: 'k-nvs', VL: 'k-vl' };
   var PAGE = 50, CHUNK = 20000, CONFIRM_CLOSE = 'Chi tiết đơn sẽ bị xóa sau 14 ngày. Tiếp tục?';
-  var S = { data: null, token: '', user: null, page: 1, sel: {}, rowErr: {}, loadedAt: 0, kho: null, san: [], impManual: {}, impOverride: {}, view: 'compact' };
+  var S = { data: null, token: '', user: null, page: 1, sel: {}, rowErr: {}, loadedAt: 0, kho: null, san: [], impManual: {}, impOverride: {}, view: 'compact', sort: { key: '', dir: 1 }, fLoai: {}, fLyDo: {}, charts: {} };
 
   var $ = function (id) { return document.getElementById(id); };
   function esc(v) {
@@ -111,6 +111,10 @@
     $('fTt').innerHTML = opts(stAll(), keep('fTt'), 'Tất cả');
     var own = owners();
     $('fOwner').innerHTML = opts(d.config.gians.map(function (g) { return own[g.ten]; }).filter(function (v, i, a) { return v && a.indexOf(v) === i; }).sort(), keep('fOwner'), 'Tất cả');
+    fillMulti('fLoai', 'Loại', uniq(function (c) { return c.loai_tep; }).concat(cs.some(function (c) { return !c.loai_tep; }) ? [EMPTY] : []), S.fLoai, {});
+    var raw = {};
+    cs.forEach(function (c) { var n = lyDo(c); raw[n.ten || EMPTY] = raw[n.ten || EMPTY] || !n.chuan; });
+    fillMulti('fLyDo', 'Lý do', Object.keys(raw).sort(function (a, b) { return a.localeCompare(b, 'vi'); }), S.fLyDo, raw);
     $('bulkKho').innerHTML = opts(d.config.kho_list.concat([{ v: '-', t: '(Trống)' }]), '', '— KHO —');
     $('bulkTt').innerHTML = opts(stAll(), '', '— Trạng thái —');
     var km = d.khoMeta || {};
@@ -125,9 +129,23 @@
   function isClosed(c) { return stClosed().indexOf(c.trang_thai) >= 0; }
   function days(c) { return P.daysOpen(c.created_at, isClosed(c) ? c.closed_at : '', new Date()); }
 
+  var EMPTY = '(Trống)';
+  function lyDo(c) { return P.normLyDo(c.ly_do_tra, window.LYDO_MAP || {}); }
+  function tgYear(c) { var y = /^(\d{4})/.exec(c.tuan_key || ''); return y && y[1]; }
+  function tgText(c) { return Export.fmtDateTime(c.thoi_gian_tra, tgYear(c)); }
+  // Ô lọc chọn nhiều (details + checkbox). sel: tập đang chọn; odd: đánh dấu "chưa chuẩn hóa".
+  function fillMulti(id, label, values, sel, odd) {
+    Object.keys(sel).forEach(function (k) { if (values.indexOf(k) < 0) delete sel[k]; });
+    var n = Object.keys(sel).length, box = $(id);
+    box.querySelector('summary').textContent = label + ': ' + (n ? n + ' đã chọn' : 'Tất cả');
+    box.querySelector('.msl').innerHTML = values.map(function (v) {
+      return '<label><input type="checkbox" value="' + esc(v) + '"' + (sel[v] ? ' checked' : '') + '> ' + esc(v) + (odd[v] ? ' <span class="odd">chưa chuẩn hóa</span>' : '') + '</label>';
+    }).join('') || '<span class="muted">Chưa có dữ liệu</span>';
+  }
   function filterState() {
     return { san: $('fSan').value, gian: $('fGian').value, kho: $('fKho').value, tuan: $('fTuan').value, tt: $('fTt').value,
-      owner: $('fOwner').value, closed: $('fClosed').checked, codes: P.splitCodes($('fMa').value) };
+      owner: $('fOwner').value, closed: $('fClosed').checked, codes: P.splitCodes($('fMa').value),
+      loai: Object.keys(S.fLoai).length ? S.fLoai : null, lydo: Object.keys(S.fLyDo).length ? S.fLyDo : null };
   }
   // Bộ lọc chung (không gồm Trạng thái / Hiện đơn đóng) — dùng cho cả bảng và 4 ô thống kê.
   function baseMatcher(f) {
@@ -142,6 +160,8 @@
       if (f.owner && own[c.gian] !== f.owner) return false;
       if (f.codes.length === 1 && String(c.ma).indexOf(f.codes[0]) < 0) return false;
       if (f.codes.length > 1 && !set[c.ma]) return false;
+      if (f.loai && !f.loai[c.loai_tep || EMPTY]) return false;
+      if (f.lydo && !f.lydo[lyDo(c).ten || EMPTY]) return false;
       return true;
     };
   }
@@ -151,20 +171,51 @@
       if (!f.closed && isClosed(c) && f.tt !== c.trang_thai) return false;
       if (f.tt && c.trang_thai !== f.tt) return false;
       return base(c);
-    }).sort(sortCases);
+    }).sort(S.sort.key ? sortBy(S.sort.key, S.sort.dir) : sortCases);
+  }
+  // Sắp xếp theo cột; ô trống luôn nằm cuối.
+  var SORT_VAL = {
+    gian: function (c) { return c.gian || ''; }, loai: function (c) { return c.loai_tep || ''; }, lydo: function (c) { return lyDo(c).ten; },
+    kho: function (c) { return c.kho || ''; }, tg: function (c) { return Export.dateKey(c.thoi_gian_tra, tgYear(c)) || (c.thoi_gian_tra ? '~' + c.thoi_gian_tra : ''); }
+  };
+  function sortBy(key, dir) {
+    var val = SORT_VAL[key];
+    return function (a, b) {
+      var x = val(a), y = val(b);
+      var rx = !x ? 2 : x[0] === '~' ? 1 : 0, ry = !y ? 2 : y[0] === '~' ? 1 : 0;
+      if (rx !== ry) return rx - ry;
+      return dir * x.localeCompare(y, 'vi', { numeric: true }) || sortCases(a, b);
+    };
+  }
+  function sortHead(key, label) {
+    var on = S.sort.key === key;
+    return '<span class="sortable' + (on ? ' on' : '') + '" data-sort="' + key + '" role="button" tabindex="0">' + esc(label) + (on ? (S.sort.dir > 0 ? ' ▲' : ' ▼') : ' <span class="sh">▲▼</span>') + '</span>';
   }
   function sortCases(a, b) {
     return String(b.tuan_key || '').localeCompare(String(a.tuan_key || '')) || String(a.created_at).localeCompare(String(b.created_at));
   }
   function clearFilters() {
     ['fSan', 'fGian', 'fKho', 'fTuan', 'fTt', 'fOwner', 'fMa'].forEach(function (id) { $(id).value = ''; });
+    S.fLoai = {}; S.fLyDo = {};
     S.page = 1; fillFilters(); render();
   }
 
-  var COLS = ['Tuần', 'Sàn', 'Gian', 'Mã vận đơn', 'Loại tệp', 'Lý do trả', 'Tên sản phẩm', 'Phân loại', 'Mã đơn hàng', 'ĐVVC', 'KHO',
-    'Thời gian trả trên hệ thống', 'Trạng thái', 'Ghi chú', 'Phụ trách', 'Số ngày tồn'];
-  var COLS_C = [['Tuần / Gian', 12], ['Mã vận đơn', 12], ['Loại / Lý do trả', 13], ['Sản phẩm', 19], ['KHO', 6],
-    ['Thời gian trả trên hệ thống', 8], ['Trạng thái', 11], ['Ghi chú', 10], ['Phụ trách / Tồn', 6]];
+  var COLS = ['Tuần', 'Sàn', ['gian', 'Gian'], 'Mã vận đơn', ['loai', 'Loại tệp'], ['lydo', 'Lý do trả'], 'Tên sản phẩm', 'Phân loại', 'Mã đơn hàng', 'ĐVVC', ['kho', 'KHO'],
+    ['tg', 'Thời gian trả trên hệ thống'], 'Trạng thái', 'Ghi chú', 'Phụ trách', 'Số ngày tồn'];
+  var COLS_C = [[['Tuần / ', ['gian', 'Gian']], 11], ['Mã vận đơn', 13], [[['loai', 'Loại'], ' / ', ['lydo', 'Lý do trả']], 13], ['Sản phẩm', 18], [['kho', 'KHO'], 6],
+    [['tg', 'Thời gian trả trên hệ thống'], 9], ['Trạng thái', 11], ['Ghi chú', 10], ['Phụ trách / Tồn', 6]];
+  function headHtml(h) {
+    if (typeof h === 'string') return esc(h);
+    if (typeof h[0] === 'string' && SORT_VAL[h[0]]) return sortHead(h[0], h[1]);
+    return h.map(headHtml).join('');
+  }
+  function copyBtn(v) { return v ? ' <button type="button" class="cp" data-copy="' + esc(v) + '" title="Chép mã" aria-label="Chép mã">📋</button>' : ''; }
+  function lydoView(c, editor) {
+    var n = lyDo(c);
+    if (!c.ly_do_tra) return editor || '';
+    var tag = n.chuan ? (n.ten !== String(c.ly_do_tra).trim() ? '<div class="sub">→ ' + esc(n.ten) + '</div>' : '') : '<div><span class="odd">chưa chuẩn hóa</span></div>';
+    return (editor || esc(n.chuan ? n.ten : c.ly_do_tra)) + (editor || !n.chuan ? tag : '');
+  }
   function autoH(t) { t.style.height = 'auto'; t.style.height = t.scrollHeight + 2 + 'px'; }
   function loadView() { try { return localStorage.getItem('viewMode') === 'full' ? 'full' : 'compact'; } catch (e) { return 'compact'; } }
   function setView(v) {
@@ -196,7 +247,7 @@
     var editable = view.filter(canEdit), allSel = editable.length && editable.every(function (c) { return S.sel[c.ma]; });
     var chk = auth ? '<th><input type="checkbox" id="selAll"' + (allSel ? ' checked' : '') + '></th>' : '';
     $('tbl').querySelector('colgroup').innerHTML = compact ? (auth ? '<col style="width:3%">' : '') + COLS_C.map(function (c) { return '<col style="width:' + c[1] + '%">'; }).join('') : '';
-    $('tbl').tHead.innerHTML = '<tr>' + chk + (compact ? COLS_C.map(function (c) { return c[0]; }) : COLS).map(function (h) { return '<th>' + esc(h) + '</th>'; }).join('') + '</tr>';
+    $('tbl').tHead.innerHTML = '<tr>' + chk + (compact ? COLS_C.map(function (c) { return c[0]; }) : COLS).map(function (h) { return '<th>' + headHtml(h) + '</th>'; }).join('') + '</tr>';
     var ncol = (compact ? COLS_C.length : COLS.length) + (auth ? 1 : 0);
     $('tbl').tBodies[0].innerHTML = view.map(function (c) {
       var ed = canEdit(c), d = days(c), ma = esc(c.ma), cls = (isClosed(c) ? 'closed' : '') + (S.rowErr[c.ma] ? ' rowerr' : '');
@@ -209,28 +260,34 @@
           : '<input class="note" data-ma="' + ma + '" data-f="ghi_chu" value="' + esc(c.ghi_chu) + '">';
         lydo = compact ? '<textarea class="note auto" rows="1" maxlength="300" data-ma="' + ma + '" data-f="ly_do_tra">' + esc(c.ly_do_tra) + '</textarea>'
           : '<input class="note" maxlength="300" data-ma="' + ma + '" data-f="ly_do_tra" value="' + esc(c.ly_do_tra) + '">';
-        tg = '<input class="tg" data-ma="' + ma + '" data-f="thoi_gian_tra" value="' + esc(c.thoi_gian_tra) + '">';
+        tg = compact ? '<textarea class="tg auto" rows="1" data-ma="' + ma + '" data-f="thoi_gian_tra">' + esc(tgText(c)) + '</textarea>'
+          : '<input class="tg" data-ma="' + ma + '" data-f="thoi_gian_tra" value="' + esc(tgText(c)) + '">';
         tuan = wkHtml('data-ma="' + ma + '" data-f="tuan"', c.tuan);
       } else {
         kho = c.kho ? '<span class="badge ' + (KHO_CLS[c.kho] || '') + '">' + esc(c.kho) + '</span>' : '';
         tt = '<span class="badge ' + stCls(c.trang_thai) + '">' + esc(c.trang_thai) + '</span>';
-        note = esc(c.ghi_chu); tg = esc(c.thoi_gian_tra); tuan = esc(c.tuan); lydo = esc(c.ly_do_tra);
+        note = esc(c.ghi_chu); tg = '<span class="tgv">' + esc(tgText(c)) + '</span>'; tuan = esc(c.tuan); lydo = '';
       }
+      lydo = lydoView(c, ed ? lydo : '');
       var nhom = esc(nhomOf(c.gian) || c.san), tonCls = d !== '' && d >= 7 ? 'ton7' : '';
       var cells = compact ? [
         '<div>' + tuan + '</div><div class="gian">' + esc(c.gian) + ' <span class="nhom">' + nhom + '</span></div>',
-        '<div class="mabig">' + ma + '</div>' + ([c.ma_don_hang, c.dvvc].filter(Boolean).length ? '<div class="sub">' + [c.ma_don_hang ? '<span class="mono">' + esc(c.ma_don_hang) + '</span>' : '', esc(c.dvvc)].filter(Boolean).join(' · ') + '</div>' : ''),
+        '<div class="mabig">' + ma + copyBtn(c.ma) + '</div>' + ([c.ma_don_hang, c.dvvc].filter(Boolean).length ? '<div class="sub">' + [c.ma_don_hang ? '<span class="mono">' + esc(c.ma_don_hang) + '</span>' + copyBtn(c.ma_don_hang) : '', esc(c.dvvc)].filter(Boolean).join(' · ') + '</div>' : ''),
         '<div><span class="loai">' + esc(c.loai_tep) + '</span></div><div>' + lydo + '</div>',
         '<div class="spname">' + esc(c.ten_sp) + '</div>' + (c.phan_loai ? '<div class="sub">' + esc(c.phan_loai) + '</div>' : ''),
         kho, tg, tt, note,
         '<div>' + esc(own[c.gian] || '') + '</div><div class="' + tonCls + '">' + (d !== '' ? esc(d) + ' ngày' : '') + '</div>'
-      ] : [tuan, nhom, esc(c.gian), '<span class="mono">' + ma + '</span>', esc(c.loai_tep), lydo, '<div class="spname">' + esc(c.ten_sp) + '</div>', esc(c.phan_loai),
-        '<span class="mono">' + esc(c.ma_don_hang) + '</span>', esc(c.dvvc), kho, tg, tt, note, esc(own[c.gian] || ''), '<span class="' + tonCls + '">' + esc(d) + '</span>'];
+      ] : [tuan, nhom, esc(c.gian), '<span class="mono">' + ma + '</span>' + copyBtn(c.ma), esc(c.loai_tep), lydo, '<div class="spname">' + esc(c.ten_sp) + '</div>', esc(c.phan_loai),
+        '<span class="mono">' + esc(c.ma_don_hang) + '</span>' + copyBtn(c.ma_don_hang), esc(c.dvvc), kho, tg, tt, note, esc(own[c.gian] || ''), '<span class="' + tonCls + '">' + esc(d) + '</span>'];
       return '<tr class="' + cls + '"' + (S.rowErr[c.ma] ? ' title="' + esc(S.rowErr[c.ma]) + '"' : '') + '>' +
         (auth ? '<td>' + (ed ? '<input type="checkbox" data-sel="' + ma + '"' + (S.sel[c.ma] ? ' checked' : '') + '>' : '') + '</td>' : '') +
         cells.map(function (x) { return '<td>' + x + '</td>'; }).join('') + '</tr>';
     }).join('') || '<tr><td colspan="' + ncol + '" class="muted">Không có đơn nào</td></tr>';
     $('tbl').querySelectorAll('textarea.auto').forEach(autoH);
+    $('btnCopyAll').textContent = '📋 Chép tất cả mã vận đơn đang lọc (' + rows.length + ')';
+    $('btnCopyAll').disabled = !rows.length;
+    $('statNote').hidden = $('statNote').hidden && !f.loai && !f.lydo;
+    renderCharts(rows);
     renderBulk();
   }
 
@@ -285,7 +342,7 @@
     return new Promise(function (res, rej) {
       var r = new FileReader(), isCsv = /\.csv$/i.test(file.name);
       r.onload = function (e) {
-        try { res(isCsv ? XLSX.read(e.target.result, { type: 'string', raw: true }) : XLSX.read(e.target.result, { type: 'array' })); }
+        try { res(isCsv ? XLSX.read(e.target.result, { type: 'string', raw: true }) : XLSX.read(e.target.result, { type: 'array', cellDates: true })); }
         catch (err) { rej(err); }
       };
       r.onerror = rej;
@@ -577,6 +634,77 @@
     });
   }
 
+  // ---------- Chép mã ----------
+  function copyText(t) {
+    var fallback = function () {
+      var ta = document.createElement('textarea');
+      ta.value = t; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.top = '-1000px'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.focus(); ta.select(); ta.setSelectionRange(0, t.length);
+      var ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) { }
+      ta.remove();
+      if (!ok) throw new Error('Trình duyệt không cho chép');
+    };
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(t).catch(fallback);
+    return new Promise(function (res) { fallback(); res(); });
+  }
+  function flash(b, text) {
+    if (b._t) clearTimeout(b._t); else b._old = b.textContent;
+    b.textContent = text; b.classList.add('done');
+    b._t = setTimeout(function () { b.textContent = b._old; b.classList.remove('done'); b._t = null; }, 1000);
+  }
+  function onCopy(b, t) {
+    copyText(t).then(function () { flash(b, 'Đã chép'); }, function (e) { msg('Không chép được: ' + e.message, 'err'); });
+  }
+
+  // ---------- Biểu đồ theo gian ----------
+  var CH_COLORS = ['#7a2b2b', '#1f3f73', '#3f5a3a', '#9a6b00', '#5b2a74', '#1f6f78', '#8a3b12', '#5a4630', '#b0587a', '#4f6d8f'];
+  var KHO_COLORS = { TSN: '#1f3f73', NVS: '#c2561a', VL: '#3f7a3a' };
+  var LOAI_COLORS = { 'Trả hàng': '#7a2b2b', 'Giao không thành công': '#1f3f73' };
+  function chartsOn() { try { return localStorage.getItem('charts') !== 'off'; } catch (e) { return true; } }
+  function stackData(rows, keyFn, colorMap) {
+    var gians = {}, keys = {};
+    rows.forEach(function (c) {
+      var g = c.gian || EMPTY, k = keyFn(c) || EMPTY;
+      gians[g] = gians[g] || { n: 0 }; gians[g].n++; gians[g][k] = (gians[g][k] || 0) + 1; keys[k] = (keys[k] || 0) + 1;
+    });
+    var labels = Object.keys(gians).sort(function (a, b) { return gians[b].n - gians[a].n || a.localeCompare(b, 'vi'); });
+    var ks = Object.keys(keys).sort(function (a, b) { return (a === EMPTY) - (b === EMPTY) || keys[b] - keys[a]; }), i = 0;
+    return { labels: labels, datasets: ks.map(function (k) {
+      var col = colorMap[k] || (k === EMPTY ? '#a8987a' : CH_COLORS[i++ % CH_COLORS.length]);
+      return { label: k, data: labels.map(function (g) { return gians[g][k] || 0; }), backgroundColor: col, borderColor: '#fbf6e9', borderWidth: 1 };
+    }) };
+  }
+  function drawChart(id, data) {
+    var box = $(id).parentNode;
+    box.style.height = Math.max(160, data.labels.length * 30 + 70) + 'px';
+    if (S.charts[id]) { S.charts[id].data = data; S.charts[id].update(); return; }
+    S.charts[id] = new Chart($(id), {
+      type: 'bar', data: data,
+      options: {
+        indexAxis: 'y', responsive: true, maintainAspectRatio: false, animation: false,
+        scales: { x: { stacked: true, beginAtZero: true, ticks: { precision: 0, color: '#2b2118' }, grid: { color: '#e4d9bf' } },
+          y: { stacked: true, ticks: { color: '#2b2118', font: { family: 'Lora, Georgia, serif', size: 13 } }, grid: { display: false } } },
+        plugins: {
+          legend: { position: 'bottom', labels: { color: '#2b2118', font: { family: 'Lora, Georgia, serif', size: 13 }, boxWidth: 14 } },
+          tooltip: { mode: 'index', axis: 'y', intersect: false, filter: function (it) { return it.raw > 0; },
+            callbacks: { label: function (it) { return ' ' + it.dataset.label + ': ' + it.raw + ' đơn'; },
+              footer: function (items) { return 'Tổng: ' + items.reduce(function (s, it) { return s + it.raw; }, 0) + ' đơn'; } } }
+        }
+      }
+    });
+  }
+  function renderCharts(rows) {
+    var on = chartsOn();
+    $('chartBox').hidden = !on;
+    $('btnCharts').textContent = on ? 'Ẩn biểu đồ' : 'Hiện biểu đồ';
+    if (!on) return;
+    if (typeof Chart === 'undefined') { $('chartMsg').textContent = 'Không tải được thư viện biểu đồ.'; return; }
+    $('chartMsg').textContent = rows.length ? '' : 'Không có đơn nào theo bộ lọc.';
+    drawChart('chLoai', stackData(rows, function (c) { return c.loai_tep; }, LOAI_COLORS));
+    drawChart('chKho', stackData(rows, function (c) { return c.kho; }, KHO_COLORS));
+  }
+
   // ---------- Tải Excel theo bộ lọc ----------
   // Xuất đúng các dòng đang thấy (mọi trang, đúng thứ tự); có dòng tick thì hỏi tải phần đã chọn hay toàn bộ.
   function onExport() {
@@ -657,6 +785,24 @@
     $('fMa').oninput = function () { S.page = 1; render(); };
     $('pPrev').onclick = function () { S.page--; render(); };
     $('btnExport').onclick = onExport;
+    $('btnCopyAll').onclick = function () { onCopy($('btnCopyAll'), filtered().map(function (c) { return c.ma; }).join('\n')); };
+    $('btnCharts').onclick = function () { try { localStorage.setItem('charts', chartsOn() ? 'off' : 'on'); } catch (e) { } render(); };
+    ['fLoai', 'fLyDo'].forEach(function (id) {
+      $(id).addEventListener('change', function (e) {
+        var set = id === 'fLoai' ? S.fLoai : S.fLyDo, v = e.target.value;
+        if (e.target.checked) set[v] = 1; else delete set[v];
+        S.page = 1; fillFilters(); render();
+      });
+    });
+    $('tbl').addEventListener('click', function (e) {
+      var b = e.target.closest('button.cp');
+      if (b) return onCopy(b, b.dataset.copy);
+      var h = e.target.closest('[data-sort]');
+      if (h) { S.sort = { key: h.dataset.sort, dir: S.sort.key === h.dataset.sort ? -S.sort.dir : 1 }; S.page = 1; render(); }
+    });
+    $('tbl').addEventListener('keydown', function (e) {
+      if ((e.key === 'Enter' || e.key === ' ') && e.target.dataset && e.target.dataset.sort) { e.preventDefault(); e.target.click(); }
+    });
     $('btnView').onclick = function () { setView(S.view === 'full' ? 'compact' : 'full'); };
     $('btnClearF').onclick = clearFilters;
     $('pNext').onclick = function () { S.page++; render(); };
