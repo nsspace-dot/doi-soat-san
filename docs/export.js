@@ -29,9 +29,12 @@
       return pad(+d) + '/' + pad(+mo) + '/' + y + ' ' + pad(+h || 0) + ':' + pad(+mi || 0) + ':' + pad(+se || 0);
     };
     if ((m = /^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/.exec(s))) return out(m[1], +m[2], m[3], m[4], m[5], m[6]);
-    if ((m = /^(\d{1,2})[\/.\-](\d{1,2})(?:[\/.\-](\d{2,4}))?(?:[ ,]+(\d{1,2})[:h](\d{2})(?::(\d{2}))?)?$/.exec(s))) {
-      var y = m[3] ? (m[3].length === 2 ? '20' + m[3] : m[3]) : String(fallbackYear || new Date().getFullYear());
-      return out(y, +m[2], m[1], m[4], m[5], m[6]);
+    // Ngày và giờ ở bất kỳ thứ tự nào: "14:56:38, 14/10/2026", "14/10 14:56", "14.10.2026 14h56"...
+    var dm = /(?:^|[^\d:])(\d{1,2})[\/.\-](\d{1,2})(?:[\/.\-](\d{2,4}))?(?![\d:])/.exec(' ' + s);
+    if (dm) {
+      var tm = /(\d{1,2})[:h](\d{2})(?::(\d{2}))?/.exec(s.replace(dm[0].trim(), ' '));
+      var y = dm[3] ? (dm[3].length === 2 ? '20' + dm[3] : dm[3]) : String(fallbackYear || new Date().getFullYear());
+      return out(y, +dm[2], dm[1], tm && tm[1], tm && tm[2], tm && tm[3]);
     }
     if (/^\d{5}(\.\d+)?$/.test(s) && +s > 20000 && +s < 80000) {
       var t = new Date(Math.round((+s - 25569) * 86400000));

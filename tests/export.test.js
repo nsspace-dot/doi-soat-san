@@ -15,4 +15,6 @@ assert.deepStrictEqual(a.slice(1), [['05/10 - 11/10', 'TSN', '852123456789012345
 const s1 = wb.Sheets['Đối soát'];
 assert.deepStrictEqual([s1.C2.t, s1.C3.v, s1['!autofilter'].ref], ['s', '0001234567890', 'A1:H3']);
 assert.strictEqual(E.fileName(['Shopee Tường Vip', '05/10 - 11/10'], new Date(2026, 9, 15, 9, 5)), 'Doi-soat_Shopee-Tuong-Vip_05-10-11-10_15-10-2026_0905.xlsx');
+assert.deepStrictEqual([E.fmtDateTime('14:56:38, 14/10/2026'), E.fmtDateTime('09:55:39, 13/10', '2026'), E.fmtDateTime('14.10.2026 14h56')],
+  ['14/10/2026 14:56:38', '13/10/2026 09:55:39', '14/10/2026 14:56:00']);
 console.log('OK: export test qua');

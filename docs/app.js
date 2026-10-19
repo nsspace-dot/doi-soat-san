@@ -189,7 +189,7 @@
     if (S.page > pages) S.page = pages;
     var view = rows.slice((S.page - 1) * PAGE, S.page * PAGE), own = owners(), auth = !!S.user;
     $('fCount').textContent = rows.length + ' đơn';
-    $('btnExport').textContent = '⬇️ Tải theo bộ lọc (' + rows.length + ')';
+    $('btnExport').textContent = '↓ Tải Excel theo bộ lọc (' + rows.length + ')';
     $('btnExport').disabled = !rows.length;
     $('pInfo').textContent = 'Trang ' + S.page + '/' + pages;
     $('pPrev').disabled = S.page <= 1; $('pNext').disabled = S.page >= pages;
